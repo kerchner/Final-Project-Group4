@@ -1,0 +1,9 @@
+model,split,mcc,accuracy,f1,roc_auc,train_seconds,n_params
+logreg_counts_k3,dev,0.7291,0.8645,0.8641,0.9304,15,65
+logreg_tfidf_k3,dev,0.7605,0.8802,0.8794,0.9442,15,65
+logreg_counts_k4,dev,0.7503,0.8752,0.8746,0.9397,22,257
+logreg_tfidf_k4,dev,0.771,0.8855,0.8853,0.9478,8,257
+logreg_counts_k5,dev,0.772,0.886,0.8862,0.9474,27,1025
+logreg_tfidf_k5,dev,0.7777,0.8889,0.8888,0.9511,24,1025
+logreg_counts_k6,dev,0.783,0.8914,0.892,0.9528,37,4097
+logreg_tfidf_k6,dev,0.7845,0.8922,0.8919,0.9533,31,4097
