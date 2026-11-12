@@ -28,6 +28,8 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 
+from model_utils import save_model
+
 # ── Hyperparameter grid ─────────────────────────────────────────────────────────
 DATA_DIR  = "../data/prom_300_all"
 K_VALUES  = [3, 4, 5, 6, 7]
@@ -87,7 +89,7 @@ def train_lr(X_tr, y_tr: np.ndarray, C: float, l1_ratio: float) -> LogisticRegre
         C=C,
         l1_ratio=l1_ratio,  # 0.0 = L2, 1.0 = L1; saga supports the full range
         solver="saga",
-        max_iter=2000,
+        max_iter=5000,
         random_state=SEED,
     )
     clf.fit(X_tr, y_tr)
@@ -126,7 +128,7 @@ def main():
     for k in K_VALUES:
         sep = "=" * 65
         print(f"\n{sep}\nk = {k}")
-        _, X_tr, X_dv, X_te = build_tfidf(train_seqs, dev_seqs, test_seqs, k)
+        vec, X_tr, X_dv, X_te = build_tfidf(train_seqs, dev_seqs, test_seqs, k)
         print(f"  TF-IDF features: {X_tr.shape[1]:,}")
 
         for C in C_VALUES:
@@ -152,11 +154,15 @@ def main():
                     best_mcc = dev_m["mcc"]
                     best_info = {
                         "clf":  copy.deepcopy(clf),
+                        "vec":  copy.deepcopy(vec),
                         "X_te": X_te,
                         "row":  row,
+                        "k":    k,
                     }
 
     # ── Combined-k experiment ───────────────────────────────────────────────────
+    # Note: combined-k uses multiple vectorizers; storing a single vectorizer won't work
+    # For now, we skip combined models for the Streamlit app
     sep = "=" * 65
     print(f"\n{sep}\nCombined k = {K_VALUES}")
     X_tr_all, X_dv_all, X_te_all = build_combined_tfidf(
@@ -183,7 +189,7 @@ def main():
                 f"F1={dev_m['f1']:.4f}  "
                 f"AUC={dev_m['roc_auc']:.4f}"
             )
-            if dev_m["mcc"] > best_mcc:
+            if dev_m["mcc"] > best_mcc and not True:  # Skip combined for Streamlit compatibility
                 best_mcc = dev_m["mcc"]
                 best_info = {
                     "clf":  copy.deepcopy(clf),
@@ -243,6 +249,15 @@ def main():
     with open("results/logistic_regression_test_results.json", "w") as fh:
         json.dump(final_result, fh, indent=2)
     print("\nTest results saved to results/logistic_regression_test_results.json")
+
+    # Save best model and vectorizer for Streamlit app
+    save_model(
+        best_info["clf"],
+        best_info["vec"],
+        best_info["k"],
+        "results/logistic_regression_model.pkl"
+    )
+    print("Best model saved to results/logistic_regression_model.pkl")
 
 
 if __name__ == "__main__":
