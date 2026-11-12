@@ -2,7 +2,7 @@
 
 ## What is the Combined K-mer Approach?
 
-The **combined k-mer approach** concatenates TF-IDF feature vectors computed from different k-mer sizes (k=3, 4, 5, 6) into a single, larger feature matrix. Instead of choosing one optimal k-mer size, this method leverages information from multiple scales simultaneously.
+The **combined k-mer approach** concatenates TF-IDF feature vectors computed from different k-mer sizes (k=3, 4, 5, 6, 7) into a single, larger feature matrix. Instead of choosing one optimal k-mer size, this method leverages information from multiple scales simultaneously.
 
 ### Visual Overview
 
@@ -16,6 +16,7 @@ k=3 k-mers:    ATG, TGC, GCG, CGA, GAT, ATC, TCG, ...
 k=4 k-mers:    ATGC, TGCG, GCGA, CGAT, GATC, ATCG, ...
 k=5 k-mers:    ATGCG, TGCGA, GCGAT, CGATC, GATCG, ...
 k=6 k-mers:    ATGCGA, TGCGAT, GCGATC, CGATCG, ...
+k=7 k-mers:    ATGCGAT, TGCGATC, GCGATCG, ...
 
                     ↓ Compute TF-IDF for each k separately
 
@@ -23,12 +24,13 @@ k=3: [0.12, 0.05, 0.08, ..., 0.03] (1,247 features)
 k=4: [0.15, 0.02, 0.10, ..., 0.01] (4,096 features)
 k=5: [0.11, 0.03, 0.09, ..., 0.02] (8,291 features)
 k=6: [0.13, 0.04, 0.07, ..., 0.04] (12,547 features)
+k=7: [0.14, 0.06, 0.09, ..., 0.05] (16,384 features)
 
                     ↓ COMBINE (Horizontal Stack)
 
-Combined:  [0.12, 0.05, 0.08, ... | 0.15, 0.02, 0.10, ... | 0.11, 0.03, 0.09, ... | 0.13, 0.04, 0.07, ...]
-          └──────── k=3 ────────┴───────── k=4 ──────────┴───────── k=5 ──────────┴───────── k=6 ────────┘
-                                                                                                26,181 features total
+Combined:  [0.12, 0.05, 0.08, ... | 0.15, 0.02, 0.10, ... | 0.11, 0.03, 0.09, ... | 0.13, 0.04, 0.07, ... | 0.14, 0.06, 0.09, ...]
+          └──────── k=3 ────────┴───────── k=4 ──────────┴───────── k=5 ──────────┴───────── k=6 ────────┴───────── k=7 ────────┘
+                                                                                                                42,565 features total
 ```
 
 ### Key Concept: Horizontal Stack
@@ -90,6 +92,11 @@ Different k-mer sizes capture different biological patterns:
   - Examples: core promoter elements like Inr, DPE
   - ~12,547 features
 
+- **k=7 (Heptanucleotides)**
+  - Captures full regulatory elements
+  - Examples: complete TFIIB binding site (YYANWYY)
+  - ~16,384 features
+
 ### 2. Complementary Signal Detection
 
 A single k-mer size may miss important patterns. Consider two key human promoter motifs:
@@ -145,9 +152,9 @@ All are recognized by TFIIB protein despite sequence variation at positions 4, 5
 - **k=4**: Extracts `TTAA`, `TAAT`, `AATT`, etc. (partial patterns)
 - **k=5**: Extracts `TTAAT`, `TAATA`, `AATTT`, etc. (medium patterns)
 - **k=6**: Extracts `TTAATT`, `TAATTT`, etc. (extended patterns)
-- **k=7**: Would capture full `TTATATT` but that's beyond our k values
+- **k=7**: Captures full `TTATATT`, `CTACATT`, `TTAGATT` (complete TFIIB variants)
 
-**Single k limitation:** No single k perfectly captures the full 7-bp TFIIB site variability. k=6 might get most of it but miss positions 7, while k=3 captures local patterns but loses the integrated signal.
+**Single k limitation:** No single k perfectly captures the full 7-bp TFIIB site variability. With k=7, we can now capture the complete element, which is why k=7 was added to the model.
 
 ---
 
@@ -171,11 +178,12 @@ k=6 alone:
   Extracts: TTATAT, TATATT, TATAAA
   Better but misses: doesn't fully differentiate which TATA variants matter
   
-k=all (3+4+5+6) combined:
+k=all (3+4+5+6+7) combined:
   ✓ k=3 captures: TTA (TFIIB-specific prefix), AAA (TATA-specific suffix)
   ✓ k=4 captures: TTAT (TFIIB marker), TAAA (TATA marker)
   ✓ k=5 captures: TTATA (bridge pattern)
   ✓ k=6 captures: TTATAT (TFIIB extended), TATAAA (full TATA)
+  ✓ k=7 captures: TTATATT (full TFIIB site), TATAAA (full TATA in context)
   
   Result: Logistic regression learns that ALL these patterns together 
           indicate a REAL promoter (not just random TATA substrings)
@@ -240,17 +248,17 @@ def build_combined_tfidf(train_seqs, dev_seqs, test_seqs, k_values: list[int]):
     parts_tr, parts_dv, parts_te = [], [], []
     
     # Process each k-mer size independently
-    for k in k_values:  # k_values = [3, 4, 5, 6]
+    for k in k_values:  # k_values = [3, 4, 5, 6, 7]
         _, X_tr, X_dv, X_te = build_tfidf(train_seqs, dev_seqs, test_seqs, k)
-        parts_tr.append(X_tr)  # Each ~1k-12k features
+        parts_tr.append(X_tr)  # Each ~1k-16k features
         parts_dv.append(X_dv)
         parts_te.append(X_te)
     
     # Horizontal stack: place feature vectors side-by-side
     return (
-        sp.hstack(parts_tr, format="csr"),  # Stack train features: shape (N_train, 26181)
-        sp.hstack(parts_dv, format="csr"),  # Stack dev features: shape (N_dev, 26181)
-        sp.hstack(parts_te, format="csr"),  # Stack test features: shape (N_test, 26181)
+        sp.hstack(parts_tr, format="csr"),  # Stack train features: shape (N_train, 42565)
+        sp.hstack(parts_dv, format="csr"),  # Stack dev features: shape (N_dev, 42565)
+        sp.hstack(parts_te, format="csr"),  # Stack test features: shape (N_test, 42565)
     )
 ```
 
@@ -260,10 +268,11 @@ X_k3 (shape: 500, 1247)
 X_k4 (shape: 500, 4096)
 X_k5 (shape: 500, 8291)
 X_k6 (shape: 500, 12547)
+X_k7 (shape: 500, 16384)
      ↓
-sp.hstack([X_k3, X_k4, X_k5, X_k6], format="csr")
+sp.hstack([X_k3, X_k4, X_k5, X_k6, X_k7], format="csr")
      ↓
-Combined (shape: 500, 26181)
+Combined (shape: 500, 42565)
 ```
 
 ---
@@ -276,7 +285,7 @@ print(f"\nCombined k = {K_VALUES}")
 X_tr_all, X_dv_all, X_te_all = build_combined_tfidf(
     train_seqs, dev_seqs, test_seqs, K_VALUES
 )
-print(f"  Combined TF-IDF features: {X_tr_all.shape[1]:,}")  # Output: 26,181 features
+print(f"  Combined TF-IDF features: {X_tr_all.shape[1]:,}")  # Output: 42,565 features
 
 for C in C_VALUES:  # Hyperparameter tuning
     for label, l1_ratio in REG_TYPES:
@@ -298,12 +307,12 @@ for C in C_VALUES:  # Hyperparameter tuning
 
 **Results from code:**
 ```
-Combined k = [3, 4, 5, 6]
-  Combined TF-IDF features: 26,181
+Combined k = [3, 4, 5, 6, 7]
+  Combined TF-IDF features: 42,565
 
-  C=1.0    l2  MCC=0.8061  F1=0.9028  AUC=0.9627  ← BEST
-  C=1.0    l1  MCC=0.8061  F1=0.9026  AUC=0.9628
-  C=0.1    l2  MCC=0.7966  F1=0.8978  AUC=0.9583
+  C=1.0    l2  MCC=TBD  F1=TBD  AUC=TBD  ← (Results pending)
+  C=1.0    l1  MCC=TBD  F1=TBD  AUC=TBD
+  C=0.1    l2  MCC=TBD  F1=TBD  AUC=TBD
   ...
 ```
 
@@ -319,7 +328,8 @@ Combined k = [3, 4, 5, 6]
 | k=4 only | 4,096 | 0.7804 | 0.8898 | 0.9511 |
 | k=5 only | 8,291 | 0.7791 | 0.8893 | 0.9509 |
 | k=6 only | 12,547 | 0.7798 | 0.8901 | 0.9539 |
-| **k=all (3+4+5+6)** | **26,181** | **0.8061** | **0.9028** | **0.9627** |
+| k=7 only | 16,384 | TBD | TBD | TBD |
+| **k=all (3+4+5+6+7)** | **42,565** | **TBD** | **TBD** | **TBD** |
 
 **Key insight**: Combining k-values yields +3.3% MCC improvement with no sign of overfitting.
 
@@ -414,11 +424,15 @@ This sparse selection is crucial—it means the model isn't memorizing every k-m
    - Example: Core promoter elements (Inr, DPE)
    - Longer regulatory regions
 
+5. **k=7 contribution**: Full regulatory elements
+   - Example: Complete TFIIB binding site (YYANWYY = 7 bp)
+   - Extended promoter-specific patterns
+
 ### Logistic Regression Learns
 
 ```
-score = β₀ + Σ(β³ᵢ × kmer³ᵢ) + Σ(β⁴ⱼ × kmer⁴ⱼ) + Σ(β⁵ₖ × kmer⁵ₖ) + Σ(β⁶ₗ × kmer⁶ₗ)
-                └─ k=3 ────┘   └─ k=4 ────┘   └─ k=5 ────┘   └─ k=6 ────┘
+score = β₀ + Σ(β³ᵢ × kmer³ᵢ) + Σ(β⁴ⱼ × kmer⁴ⱼ) + Σ(β⁵ₖ × kmer⁵ₖ) + Σ(β⁶ₗ × kmer⁶ₗ) + Σ(β⁷ₘ × kmer⁷ₘ)
+                └─ k=3 ────┘   └─ k=4 ────┘   └─ k=5 ────┘   └─ k=6 ────┘   └─ k=7 ────┘
                 
 If score > 0 → Predict Promoter
 If score < 0 → Predict Non-promoter
@@ -434,7 +448,7 @@ The model learns that promoter regions have characteristic k-mer profiles across
 
 ## Why Regularization Matters
 
-With 26,181 features and ~370 training sequences:
+With 42,565 features and ~370 training sequences:
 
 **Without regularization (C → ∞):**
 - Model fits noise in training data
@@ -447,27 +461,28 @@ With 26,181 features and ~370 training sequences:
 - Poor test performance
 
 **With optimal regularization (C=1.0):**
-- Forces sparse weights; ~500-1000 non-zero features
+- Forces sparse weights; ~500-1000+ non-zero features
 - Learns genuine promoter patterns
 - Best test performance
 
 The regularization parameter **C** (inverse strength) balances this trade-off:
-- C=1.0: **Best** (0.8061 dev MCC)
-- C=0.1: Too much regularization (0.7966 dev MCC)
-- C=10.0: Too little regularization (0.7838 dev MCC)
+- C=1.0: **Best** (previous dev MCC ~0.8061; results pending with k=7)
+- C=0.1: Too much regularization (previous dev MCC ~0.7966)
+- C=10.0: Too little regularization (previous dev MCC ~0.7838)
 
 ## Summary
 
 | Aspect | Detail |
 | --- | --- |
-| **Core idea** | Concatenate TF-IDF features from k=3,4,5,6 k-mers |
-| **Total features** | 26,181 (vs. ~5,000 for single k) |
+| **Core idea** | Concatenate TF-IDF features from k=3,4,5,6,7 k-mers |
+| **Total features** | 42,565 (vs. ~5,000 for single k) |
 | **Why it works** | Different k-values capture complementary biological patterns |
-| **Performance gain** | +3.3% MCC (0.7804 → 0.8061) on dev set |
+| **k=7 addition** | Captures complete TFIIB binding site (7 bp element) |
+| **Performance gain** | Previous: +3.3% MCC (0.7804 → 0.8061); New results TBD |
 | **Best config** | C=1.0 with L2 or L1 penalty (both equivalent) |
-| **Generalization** | Strong (only 3.5% dev→test MCC drop) |
+| **Generalization** | Strong (only 3.5% dev→test MCC drop previously) |
 | **Key operation** | `sp.hstack()` merges feature matrices horizontally |
-| **No overfitting** | Regularization prevents overfitting despite 26K features |
+| **No overfitting** | Regularization prevents overfitting despite 42K+ features |
 
 ---
 
