@@ -30,8 +30,8 @@ from sklearn.metrics import (
 
 # ── Hyperparameter grid ─────────────────────────────────────────────────────────
 DATA_DIR  = "../data/prom_300_all"
-K_VALUES  = [3, 4, 5, 6]
-C_VALUES  = [0.001, 0.01, 0.1, 1.0, 10.0]   # inverse regularisation strength
+K_VALUES  = [3, 4, 5, 6, 7]
+C_VALUES  = [0.01, 0.1, 1.0, 10.0]   # inverse regularisation strength
 # sklearn ≥1.8: use l1_ratio in place of penalty (0.0 = L2, 1.0 = L1)
 REG_TYPES = [("l1", 1.0), ("l2", 0.0)]       # (display label, l1_ratio)
 SEED      = 42
@@ -87,7 +87,7 @@ def train_lr(X_tr, y_tr: np.ndarray, C: float, l1_ratio: float) -> LogisticRegre
         C=C,
         l1_ratio=l1_ratio,  # 0.0 = L2, 1.0 = L1; saga supports the full range
         solver="saga",
-        max_iter=1000,
+        max_iter=2000,
         random_state=SEED,
     )
     clf.fit(X_tr, y_tr)
@@ -200,8 +200,8 @@ def main():
         .head(10)
         .to_string(index=False)
     )
-    results_df.to_csv("logistic_regression_dev_results.csv", index=False)
-    print("\nDev results saved to logistic_regression_dev_results.csv")
+    results_df.to_csv("results/logistic_regression_dev_results.csv", index=False)
+    print("\nDev results saved to results/logistic_regression_dev_results.csv")
 
     # ── Best-per-k summary ──────────────────────────────────────────────────────
     print(f"\n{'─'*65}")
@@ -240,9 +240,9 @@ def main():
         "test_metrics":     test_m,
         "confusion_matrix": cm.tolist(),
     }
-    with open("logistic_regression_test_results.json", "w") as fh:
+    with open("results/logistic_regression_test_results.json", "w") as fh:
         json.dump(final_result, fh, indent=2)
-    print("\nTest results saved to logistic_regression_test_results.json")
+    print("\nTest results saved to results/logistic_regression_test_results.json")
 
 
 if __name__ == "__main__":
