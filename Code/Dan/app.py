@@ -84,7 +84,11 @@ with st.sidebar:
 
     # Show model-specific info
     if isinstance(selected_model, LogisticRegressionModel):
-        st.write(f"**K-mer size:** {selected_model.k}")
+        # Handle both single k and combined k-mers
+        if selected_model.is_combined:
+            st.write(f"**K-mer sizes:** {selected_model.k_values}")
+        else:
+            st.write(f"**K-mer size:** {selected_model.k_values[0]}")
         st.write("**Status:** ✅ Implemented and trained")
         if test_results:
             st.subheader("Test Set Metrics")
