@@ -4,8 +4,6 @@ A machine learning application for classifying DNA sequences as promoter or non-
 
 ## Quick Start
 
-**For detailed quick start instructions, see [STREAMLIT_README.md](STREAMLIT_README.md)**
-
 ### Installation
 
 ```bash
@@ -14,17 +12,33 @@ source ENV/bin/activate
 pip install -r requirements.txt
 ```
 
-### Running
+### Training the Model
+
+Before running the app, train the logistic regression baseline:
 
 ```bash
-# 1. Train the logistic regression baseline
 python logistic_regression_train.py
+```
 
-# 2. Launch the Streamlit app
+This will:
+1. Load training, validation, and test data from `../data/prom_300_all/`
+2. Test different hyperparameters (k ∈ {3,4,5,6,7}, C values, regularization types)
+3. Select the best model based on validation MCC
+4. Evaluate on the test set
+5. Save the trained model to `results/logistic_regression_model.pkl`
+
+**Expected output files:**
+- `results/logistic_regression_model.pkl` - Trained model and vectorizer(s)
+- `results/logistic_regression_test_results.json` - Final metrics
+- `results/logistic_regression_dev_results.csv` - All hyperparameter search results
+
+### Running the App
+
+```bash
 streamlit run app.py
 ```
 
-App opens at `http://localhost:8501`
+App opens at `http://localhost:8501` in your browser.
 
 ---
 
@@ -140,45 +154,100 @@ Compare machine learning approaches to identify which tokenization strategy and 
 
 ## Streamlit Application
 
-**For detailed app documentation and feature explanations, see [STREAMLIT_README.md](STREAMLIT_README.md)**
-
 ### Features
+
+**🔄 Multi-Model Support**
+- **Logistic Regression** ✅ (fully implemented, ready to use)
+- **BiLSTM with Learned Embeddings** 🔄 (placeholder, under development)
+- **DNABERT-2 (Frozen Embeddings)** 🔄 (placeholder, under development)
+- **DNABERT-2 (Fine-tuned)** 🔄 (placeholder, under development)
+
+Select any model from the sidebar dropdown to use it for predictions.
 
 **Model Selection**
 - Dropdown to choose active model
 - Status indicators (✅ implemented / 🔄 placeholder)
-- Model-specific information in sidebar
+- Test set metrics (for trained models)
+- Implementation status display
 
 **Single Sequence Prediction**
-- Paste DNA sequence (300 bp recommended)
-- Instant prediction with confidence score
-- **For Logistic Regression:** Top 15 k-mers ranked by contribution
-  - Shows which k-mers support/oppose promoter classification
-  - Color-coded: green=support, red=oppose
+1. Paste a DNA sequence (300 bp recommended)
+2. Press Tab or click elsewhere to update the preview
+3. Click "Predict" to get results
+4. Get instant results with confidence scores
+5. **For Logistic Regression:** See the top k-mers that influenced the prediction
 
 **Batch Prediction**
-- Upload CSV with "sequence" column
-- Process all sequences at once
-- Download results as CSV
+1. Upload a CSV file with a "sequence" column
+2. Click "Predict All"
+3. Get results for all sequences
+4. Download predictions as CSV
 
 **About Tab**
-- Description of each model
-- Implementation status
-- Expected performance
-- How k-mer features work (see [Combined_K-Mer_Explanation.md](Combined_K-Mer_Explanation.md) for detailed explanation)
+- Detailed descriptions of all models
+- Implementation status and rationale
+- Expected performance metrics
+- How k-mer features work
 
-### Running the App
+### How It Works
 
-```bash
-source ENV/bin/activate
-streamlit run app.py
-```
+**Logistic Regression (Implemented)**
+
+*Feature Engineering:*
+- DNA sequences are converted to overlapping k-mers (windows of length k)
+- Each k-mer is weighted using TF-IDF (Term Frequency-Inverse Document Frequency)
+- Rare k-mers get higher weight, common k-mers are down-weighted
+
+*Model:*
+- Logistic regression learns which k-mers are indicative of promoters
+- Produces a probability score between 0 and 1
+
+*Interpretability:*
+- For each prediction, we calculate the contribution of each k-mer:
+  ```
+  Contribution = TF-IDF weight × Logistic regression coefficient
+  ```
+- Top contributing k-mers are displayed, sorted by impact
+- Users can validate predictions by examining the biological meaning of key k-mers
+
+**Placeholder Models**
+
+Models under development currently return random predictions seeded by the input sequence. This allows:
+- Testing UI/UX before implementation
+- Demonstrating the model selection interface
+- Placeholder results for screenshots and demos
+
+Once a model is fully implemented, simply replace the placeholder class with the actual implementation—no UI changes needed!
+
+### Interpreting Results
+
+**Prediction**
+- **✅ PROMOTER:** Model predicts this is a promoter region (probability > 0.5)
+- **❌ NOT PROMOTER:** Model predicts this is not a promoter (probability ≤ 0.5)
+
+**Confidence**
+- Shown as a percentage (0-100%)
+- Higher = more certain about the prediction
+- For promoter predictions: confidence = model probability
+- For non-promoter predictions: confidence = 1 - model probability
+
+**K-mers (Logistic Regression only)**
+- **kmer:** The 3-7 letter DNA sequence found in your input
+  - Format: "ATG[3]", "ATGA[4]", etc. showing k-mer size
+- **tfidf:** How rare/common this k-mer is (0-1 scale)
+  - Close to 0: common k-mer (appears in many sequences)
+  - Close to 1: rare k-mer (appears in few sequences)
+- **coef:** The model's learned weight for this k-mer
+  - Positive: indicates promoter
+  - Negative: indicates non-promoter
+  - Larger magnitude: stronger signal
+- **contribution:** tfidf × coef = actual impact on this prediction
+  - Positive: helps predict promoter
+  - Negative: helps predict non-promoter
 
 ---
 
 ## Architecture
-
-**For complete architecture details and design patterns, see [MULTI_MODEL_ARCHITECTURE.md](MULTI_MODEL_ARCHITECTURE.md) and [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md)**
 
 ### Model Abstraction
 
@@ -198,8 +267,6 @@ Contribution = TF-IDF Weight × Logistic Regression Coefficient
 **Example:**
 - K-mer: "ATG", TF-IDF: 0.12, Coefficient: +0.85
 - Contribution: +0.10 (supports promoter)
-
-For detailed technical implementation, see [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md).
 
 ---
 
@@ -235,11 +302,6 @@ Dan/
 
 ## Implementation Roadmap
 
-**For detailed implementation tasks, checklists, and common pitfalls, see:**
-- **[MODELS_IMPLEMENTATION_TODO.md](MODELS_IMPLEMENTATION_TODO.md)** - Step-by-step tasks and effort estimates
-- **[TRAINING_SCRIPTS_GUIDE.md](TRAINING_SCRIPTS_GUIDE.md)** - Guide to implementing training scripts
-- **[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)** - Current status and progress tracking
-
 Every model has TWO files: `{model_name}_train.py` (training) + `{model_name}_model.py` (class)
 
 **Phase 1: BiLSTM** (Start here - medium difficulty)
@@ -267,8 +329,6 @@ Every model has TWO files: `{model_name}_train.py` (training) + `{model_name}_mo
 2. Create model class in `{model_name}_model.py` inheriting from `PromoterModel`
 3. Register in `app.py`'s `initialize_models()` function
 4. Done! Model appears in dropdown
-
-For detailed integration instructions, see [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md).
 
 ---
 
@@ -302,6 +362,23 @@ accelerate>=0.27.0     # Distributed training
 
 ## Troubleshooting
 
+**ModuleNotFoundError when running app**
+```bash
+# Make sure you're in the virtual environment
+source ENV/bin/activate
+streamlit run app.py
+```
+
+**"Model not found" error in Streamlit**
+The trained model hasn't been created yet:
+```bash
+# First, train the model
+python logistic_regression_train.py
+
+# Then run the app
+streamlit run app.py
+```
+
 **"No models available" error**
 - Run `logistic_regression_train.py` first
 
@@ -309,14 +386,16 @@ accelerate>=0.27.0     # Distributed training
 - Normal while model is training
 - Reload Streamlit app once trained
 
+**Slow predictions on first run**
+- Normal! Streamlit caches the model on first load
+- Subsequent predictions will be instant
+
 **Out of memory (DNABERT-2)**
 - Reduce batch size, enable gradient accumulation
 - Use mixed precision training
 
 **Different predictions from each model**
 - Expected! Compare test set performance metrics
-
-For more troubleshooting help, see [STREAMLIT_README.md](STREAMLIT_README.md#troubleshooting) and [TRAINING_SCRIPTS_GUIDE.md](TRAINING_SCRIPTS_GUIDE.md#debugging-tips).
 
 ---
 

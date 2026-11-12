@@ -107,23 +107,18 @@ with tab1:
 
     col1, col2 = st.columns([2, 1])
 
-    # Use session state with callback to trigger rerun on every keystroke
-    if "seq_input" not in st.session_state:
-        st.session_state.seq_input = ""
-
-    def update_sequence():
-        st.session_state.seq_input = st.session_state.sequence_textarea.upper().replace(" ", "").replace("\n", "")
-
     with col1:
-        st.text_area(
+        # Use text_area for multi-line display
+        sequence_input = st.text_area(
             "Enter a DNA sequence (300 bp recommended):",
             placeholder="ATCGATCG...",
             height=150,
-            help="Paste a DNA sequence. Expected length: 300 bp for optimal performance.",
+            help="Paste a DNA sequence. Press Tab or click elsewhere to update the preview. Expected length: 300 bp for optimal performance.",
             key="sequence_textarea",
-            on_change=update_sequence,
         )
-        sequence_input = st.session_state.seq_input
+
+        # Clean the input (handles newlines and spaces from pasted sequences)
+        sequence_input = sequence_input.upper().replace(" ", "").replace("\n", "")
 
     with col2:
         st.write("")  # spacing

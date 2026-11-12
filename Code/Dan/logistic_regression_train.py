@@ -49,7 +49,19 @@ def load_split(name: str):
 # ── K-mer tokenizer ─────────────────────────────────────────────────────────────
 
 def kmer_docs(seqs: list[str], k: int) -> list[str]:
-    """Convert DNA sequences to space-separated overlapping k-mer strings."""
+    """Convert DNA sequences to space-separated overlapping k-mer strings.
+
+    Generates all possible k-mers by sliding a window of size k across each sequence.
+    K-mers OVERLAP: for a sequence "ATCG" with k=2, produces "AT TC CG" (not "AT CG").
+    Example: "ATCGATC" with k=3 → "ATC TCG CGA GAT ATC"
+
+    Args:
+        seqs: List of DNA sequences
+        k: K-mer window size
+
+    Returns:
+        List of space-separated k-mer strings (one per input sequence)
+    """
     return [
         " ".join(seq[i : i + k] for i in range(len(seq) - k + 1))
         for seq in seqs
@@ -161,14 +173,20 @@ def main():
                     }
 
     # ── Combined-k experiment ───────────────────────────────────────────────────
-    # Note: combined-k uses multiple vectorizers; storing a single vectorizer won't work
-    # For now, we skip combined models for the Streamlit app
     sep = "=" * 65
     print(f"\n{sep}\nCombined k = {K_VALUES}")
     X_tr_all, X_dv_all, X_te_all = build_combined_tfidf(
         train_seqs, dev_seqs, test_seqs, K_VALUES
     )
     print(f"  Combined TF-IDF features: {X_tr_all.shape[1]:,}")
+
+    # Store vectorizers for combined k model
+    combined_vectorizers = []
+    for k in K_VALUES:
+        _, X_tr, _, _ = build_tfidf(train_seqs, dev_seqs, test_seqs, k)
+        vec = TfidfVectorizer(analyzer="word", sublinear_tf=True)
+        vec.fit(kmer_docs(train_seqs, k))
+        combined_vectorizers.append(vec)
 
     for C in C_VALUES:
         for label, l1_ratio in REG_TYPES:
@@ -189,12 +207,14 @@ def main():
                 f"F1={dev_m['f1']:.4f}  "
                 f"AUC={dev_m['roc_auc']:.4f}"
             )
-            if dev_m["mcc"] > best_mcc and not True:  # Skip combined for Streamlit compatibility
+            if dev_m["mcc"] > best_mcc:
                 best_mcc = dev_m["mcc"]
                 best_info = {
                     "clf":  copy.deepcopy(clf),
+                    "vec":  copy.deepcopy(combined_vectorizers),  # List of vectorizers
                     "X_te": X_te_all,
                     "row":  row,
+                    "k":    K_VALUES,  # Store list of k-values for combined
                 }
 
     # ── Summary table ───────────────────────────────────────────────────────────

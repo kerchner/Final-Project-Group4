@@ -29,18 +29,19 @@ class LogisticRegressionModel(PromoterModel):
         k: K-mer size used during training
     """
 
-    def __init__(self, clf: LogisticRegression, vectorizer: TfidfVectorizer, k: int):
+    def __init__(self, clf: LogisticRegression, vectorizers, k):
         """
         Initialize logistic regression model.
 
         Args:
             clf: Fitted LogisticRegression classifier
-            vectorizer: Fitted TfidfVectorizer
-            k: K-mer size (e.g., 3, 4, 5, 6, 7)
+            vectorizers: Single TfidfVectorizer OR list of vectorizers for combined k-mers
+            k: K-mer size (int) or list of k-values for combined models
         """
         self.clf = clf
-        self.vectorizer = vectorizer
-        self.k = k
+        self.vectorizers = vectorizers if isinstance(vectorizers, list) else [vectorizers]
+        self.k_values = k if isinstance(k, list) else [k]
+        self.is_combined = isinstance(k, list)
         self.supports_features = True
 
     def predict(self, sequence: str) -> dict:
@@ -55,12 +56,28 @@ class LogisticRegressionModel(PromoterModel):
                 "sequence": input sequence,
                 "prediction": 0 or 1,
                 "probability": float (0.0-1.0),
-                "model": "Logistic Regression (k=X)",
+                "model": "Logistic Regression (k=X or combined)",
                 "supports_features": True,
             }
         """
-        kmer_doc = " ".join(sequence[i : i + self.k] for i in range(len(sequence) - self.k + 1))
-        X = self.vectorizer.transform([kmer_doc])
+        if self.is_combined:
+            # Vectorize for each k separately and combine
+            # Note: k-mers are OVERLAPPING (sliding window across sequence)
+            import scipy.sparse as sp
+            parts = []
+            for k, vec in zip(self.k_values, self.vectorizers):
+                kmer_doc = " ".join(sequence[i : i + k] for i in range(len(sequence) - k + 1))
+                parts.append(vec.transform([kmer_doc]))
+            X = sp.hstack(parts, format="csr")
+            model_str = f"Logistic Regression (k={self.k_values})"
+        else:
+            # Single k-mer case
+            # Note: k-mers are OVERLAPPING (sliding window across sequence)
+            k = self.k_values[0]
+            kmer_doc = " ".join(sequence[i : i + k] for i in range(len(sequence) - k + 1))
+            X = self.vectorizers[0].transform([kmer_doc])
+            model_str = f"Logistic Regression (k={k})"
+
         pred = self.clf.predict(X)[0]
         prob = self.clf.predict_proba(X)[0, 1]
 
@@ -68,7 +85,7 @@ class LogisticRegressionModel(PromoterModel):
             "sequence": sequence,
             "prediction": int(pred),
             "probability": float(prob),
-            "model": f"Logistic Regression (k={self.k})",
+            "model": model_str,
             "supports_features": True,
         }
 
@@ -99,14 +116,38 @@ class LogisticRegressionModel(PromoterModel):
                 "total_features_present": int,
             }
         """
+        import scipy.sparse as sp
+
         result = self.predict(sequence)
 
-        kmer_doc = " ".join(sequence[i : i + self.k] for i in range(len(sequence) - self.k + 1))
-        X = self.vectorizer.transform([kmer_doc])
+        if self.is_combined:
+            # Build combined feature matrix and feature names
+            # Note: k-mers are OVERLAPPING (sliding window across sequence)
+            parts = []
+            all_feature_names = []
 
-        feature_names = self.vectorizer.get_feature_names_out()
+            for k, vec in zip(self.k_values, self.vectorizers):
+                kmer_doc = " ".join(sequence[i : i + k] for i in range(len(sequence) - k + 1))
+                X_part = vec.transform([kmer_doc])
+                parts.append(X_part)
+
+                # Track feature names with k-mer size indicator
+                feat_names = vec.get_feature_names_out()
+                all_feature_names.extend([f"{kmer}[{k}]" for kmer in feat_names])
+
+            X = sp.hstack(parts, format="csr")
+            X_dense = X.toarray()[0]
+            feature_names = all_feature_names
+        else:
+            # Single k-mer case
+            # Note: k-mers are OVERLAPPING (sliding window across sequence)
+            k = self.k_values[0]
+            kmer_doc = " ".join(sequence[i : i + k] for i in range(len(sequence) - k + 1))
+            X = self.vectorizers[0].transform([kmer_doc])
+            X_dense = X.toarray()[0]
+            feature_names = self.vectorizers[0].get_feature_names_out()
+
         coefficients = self.clf.coef_[0]
-        X_dense = X.toarray()[0]
         nonzero_indices = X.nonzero()[1]
 
         contributions = []

@@ -12,22 +12,53 @@ from sklearn.linear_model import LogisticRegression
 
 
 def kmer_docs(seqs: list[str], k: int) -> list[str]:
-    """Convert DNA sequences to space-separated overlapping k-mer strings."""
+    """Convert DNA sequences to space-separated overlapping k-mer strings.
+
+    Generates all possible k-mers by sliding a window of size k across each sequence.
+    K-mers OVERLAP: for a sequence "ATCG" with k=2, produces "AT TC CG" (not "AT CG").
+
+    Args:
+        seqs: List of DNA sequences
+        k: K-mer window size
+
+    Returns:
+        List of space-separated k-mer strings (one per input sequence)
+    """
     return [
         " ".join(seq[i : i + k] for i in range(len(seq) - k + 1))
         for seq in seqs
     ]
 
 
-def save_model(clf: LogisticRegression, vectorizer: TfidfVectorizer, k: int, path: str):
-    """Save trained model and vectorizer to disk."""
+def save_model(clf: LogisticRegression, vectorizer_or_list, k, path: str):
+    """Save trained model and vectorizer(s) to disk.
+
+    Supports both single k-mer models and combined k-mer models.
+
+    Args:
+        clf: Fitted LogisticRegression classifier
+        vectorizer_or_list: Single TfidfVectorizer or list of vectorizers
+        k: Single k-value (int) or list of k-values
+        path: Path to save model
+    """
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     with open(path, "wb") as f:
-        pickle.dump({"clf": clf, "vectorizer": vectorizer, "k": k}, f)
+        pickle.dump({
+            "clf": clf,
+            "vectorizer": vectorizer_or_list,
+            "k": k,
+            "is_combined": isinstance(k, list)
+        }, f)
 
 
-def load_model(path: str) -> tuple[LogisticRegression, TfidfVectorizer, int]:
-    """Load trained model and vectorizer from disk."""
+def load_model(path: str):
+    """Load trained model and vectorizer(s) from disk.
+
+    Returns:
+        Tuple of (clf, vectorizer_or_list, k)
+        - For single k: vectorizer is TfidfVectorizer, k is int
+        - For combined k: vectorizer is list of vectorizers, k is list of ints
+    """
     with open(path, "rb") as f:
         data = pickle.load(f)
     return data["clf"], data["vectorizer"], data["k"]
