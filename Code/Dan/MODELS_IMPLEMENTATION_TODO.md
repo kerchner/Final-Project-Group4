@@ -1,4 +1,10 @@
-# Model Implementation Roadmap
+# Model Implementation Roadmap - Detailed Tasks
+
+> **📖 For the main project documentation, see [README.md](README.md)**
+> 
+> This file provides detailed implementation tasks and checklists. For overview, priorities, and timeline, refer to the main README.
+
+## Overview
 
 This document outlines the implementation tasks for all models in the promoter detection project.
 

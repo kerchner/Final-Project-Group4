@@ -1,4 +1,10 @@
-# Placeholder Model Files
+# Placeholder Model Files - Implementation Reference
+
+> **📖 For the main project documentation, see [README.md](README.md)**
+> 
+> This file provides details about placeholder implementations. For complete project overview, architecture, and quick start, refer to the main README.
+
+## Overview
 
 All placeholder code for future model implementations is ready. Each file contains:
 - Detailed docstrings explaining what needs to be implemented

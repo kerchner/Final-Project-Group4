@@ -1,4 +1,8 @@
-# Implementation Status - Complete Overview
+# Implementation Status - Project Overview
+
+> **📖 For the main project documentation, see [README.md](README.md)**
+> 
+> This file provides a detailed status breakdown. See the main README for quick start, architecture overview, and implementation roadmap.
 
 ## Summary
 

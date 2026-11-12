@@ -4,6 +4,8 @@ A machine learning application for classifying DNA sequences as promoter or non-
 
 ## Quick Start
 
+**For detailed quick start instructions, see [STREAMLIT_README.md](STREAMLIT_README.md)**
+
 ### Installation
 
 ```bash
@@ -138,6 +140,8 @@ Compare machine learning approaches to identify which tokenization strategy and 
 
 ## Streamlit Application
 
+**For detailed app documentation and feature explanations, see [STREAMLIT_README.md](STREAMLIT_README.md)**
+
 ### Features
 
 **Model Selection**
@@ -161,7 +165,7 @@ Compare machine learning approaches to identify which tokenization strategy and 
 - Description of each model
 - Implementation status
 - Expected performance
-- How k-mer features work
+- How k-mer features work (see [Combined_K-Mer_Explanation.md](Combined_K-Mer_Explanation.md) for detailed explanation)
 
 ### Running the App
 
@@ -173,6 +177,8 @@ streamlit run app.py
 ---
 
 ## Architecture
+
+**For complete architecture details and design patterns, see [MULTI_MODEL_ARCHITECTURE.md](MULTI_MODEL_ARCHITECTURE.md) and [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md)**
 
 ### Model Abstraction
 
@@ -192,6 +198,8 @@ Contribution = TF-IDF Weight × Logistic Regression Coefficient
 **Example:**
 - K-mer: "ATG", TF-IDF: 0.12, Coefficient: +0.85
 - Contribution: +0.10 (supports promoter)
+
+For detailed technical implementation, see [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md).
 
 ---
 
@@ -227,6 +235,11 @@ Dan/
 
 ## Implementation Roadmap
 
+**For detailed implementation tasks, checklists, and common pitfalls, see:**
+- **[MODELS_IMPLEMENTATION_TODO.md](MODELS_IMPLEMENTATION_TODO.md)** - Step-by-step tasks and effort estimates
+- **[TRAINING_SCRIPTS_GUIDE.md](TRAINING_SCRIPTS_GUIDE.md)** - Guide to implementing training scripts
+- **[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)** - Current status and progress tracking
+
 Every model has TWO files: `{model_name}_train.py` (training) + `{model_name}_model.py` (class)
 
 **Phase 1: BiLSTM** (Start here - medium difficulty)
@@ -254,6 +267,8 @@ Every model has TWO files: `{model_name}_train.py` (training) + `{model_name}_mo
 2. Create model class in `{model_name}_model.py` inheriting from `PromoterModel`
 3. Register in `app.py`'s `initialize_models()` function
 4. Done! Model appears in dropdown
+
+For detailed integration instructions, see [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md).
 
 ---
 
@@ -300,6 +315,8 @@ accelerate>=0.27.0     # Distributed training
 
 **Different predictions from each model**
 - Expected! Compare test set performance metrics
+
+For more troubleshooting help, see [STREAMLIT_README.md](STREAMLIT_README.md#troubleshooting) and [TRAINING_SCRIPTS_GUIDE.md](TRAINING_SCRIPTS_GUIDE.md#debugging-tips).
 
 ---
 

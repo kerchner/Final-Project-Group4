@@ -1,4 +1,8 @@
-# Streamlit Implementation Guide - Multi-Model Support
+# Implementation Guide - Architecture & Integration
+
+> **📖 For the main project documentation, see [README.md](README.md)**
+> 
+> This file provides deep technical details about the Streamlit implementation. For quick start, roadmap, and overview, refer to the main README.
 
 ## Overview
 

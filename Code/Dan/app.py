@@ -107,29 +107,41 @@ with tab1:
 
     col1, col2 = st.columns([2, 1])
 
+    # Use session state with callback to trigger rerun on every keystroke
+    if "seq_input" not in st.session_state:
+        st.session_state.seq_input = ""
+
+    def update_sequence():
+        st.session_state.seq_input = st.session_state.sequence_textarea.upper().replace(" ", "").replace("\n", "")
+
     with col1:
-        sequence_input = st.text_area(
+        st.text_area(
             "Enter a DNA sequence (300 bp recommended):",
             placeholder="ATCGATCG...",
             height=150,
             help="Paste a DNA sequence. Expected length: 300 bp for optimal performance.",
+            key="sequence_textarea",
+            on_change=update_sequence,
         )
-        sequence_input = sequence_input.upper().replace(" ", "").replace("\n", "")
+        sequence_input = st.session_state.seq_input
 
     with col2:
         st.write("")  # spacing
         st.metric("Sequence Length", len(sequence_input))
 
         if len(sequence_input) < 3:
-            st.warning("Sequence too short (min 3 bp)")
+            st.warning("⚠️ Sequence too short\n(minimum 3 bp)")
             predict_button_disabled = True
+            button_text = "❌ Enter a sequence"
         elif any(c not in "ACGT" for c in sequence_input):
-            st.warning("Sequence contains invalid characters (only ACGT allowed)")
+            st.warning("⚠️ Invalid characters\n(only ACGT allowed)")
             predict_button_disabled = True
+            button_text = "❌ Fix sequence"
         else:
             predict_button_disabled = False
+            button_text = "✅ 🔍 Predict"
 
-    if st.button("🔍 Predict", disabled=predict_button_disabled, use_container_width=True):
+    if st.button(button_text, disabled=predict_button_disabled, use_container_width=True):
         # Get prediction
         if selected_model.supports_features:
             result = selected_model.predict_with_features(sequence_input, top_n=15)

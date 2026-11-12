@@ -41,6 +41,7 @@ class LogisticRegressionModel(PromoterModel):
         self.clf = clf
         self.vectorizer = vectorizer
         self.k = k
+        self.supports_features = True
 
     def predict(self, sequence: str) -> dict:
         """

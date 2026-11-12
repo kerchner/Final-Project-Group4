@@ -1,4 +1,10 @@
-# Training Scripts Guide
+# Training Scripts Guide - Implementation Reference
+
+> **📖 For the main project documentation, see [README.md](README.md)**
+> 
+> This file provides detailed guidance for implementing training scripts. For overview, roadmap, and quick start, refer to the main README.
+
+## Overview
 
 Complete skeleton training scripts have been created for all models. Each script mirrors the structure of `logistic_regression_train.py` and provides a template for implementing the actual training logic.
 

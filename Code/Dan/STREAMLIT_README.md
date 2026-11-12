@@ -1,4 +1,8 @@
-# Promoter Detector Streamlit App - Quick Start
+# Streamlit App Quick Start & Reference
+
+> **📖 For complete project documentation, see [README.md](README.md)**
+> 
+> This file provides quick-start instructions and detailed app usage reference. For architecture, models, and implementation roadmap, refer to the main README.
 
 ## Installation
 

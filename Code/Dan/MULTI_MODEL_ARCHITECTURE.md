@@ -1,4 +1,8 @@
-# Multi-Model Architecture Implementation
+# Multi-Model Architecture - Deep Dive
+
+> **📖 For the main project documentation, see [README.md](README.md)**
+> 
+> This file provides architecture and design pattern details. For quick start and complete overview, refer to the main README.
 
 ## Overview
 
