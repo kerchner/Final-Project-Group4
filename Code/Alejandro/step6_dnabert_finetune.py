@@ -4,18 +4,20 @@ Our head: average the token vectors -> dropout -> linear layer -> one score (pro
 All 117M DNABERT-2 weights are trained too, so you need a GPU.
 
 Run:        python step6_dnabert_finetune.py
-Final run:  python step6_dnabert_finetune.py --test
---quick runs a tiny subset to check the code. Saves the best model to models/dnabert2_finetuned.pt.
+Tuning:     python step6_dnabert_finetune.py --lr 2e-5 --tag lr2e-5     (--tag keeps each setting separate)
+Final step: python step6_dnabert_finetune.py --tag lr2e-5 --test        (NO training: scores the saved model on test)
+--quick runs a tiny subset to check the code. Saves the best model to models/dnabert2_finetuned[_tag].pt.
 """
 import argparse
 import time
 
 import numpy as np
+import pandas as pd
 import torch
 from torch import nn
 from transformers import get_linear_schedule_with_warmup
 
-from common import MODELS_DIR, evaluate, load_data, load_dnabert, mean_pool
+from common import MODELS_DIR, RESULTS_DIR, evaluate, load_data, load_dnabert, mean_pool
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -29,6 +31,13 @@ class DNABertClassifier(nn.Module):
     def forward(self, ids, mask):
         hidden = self.bert(ids, attention_mask=mask)[0]  # [batch, tokens, 768]
         return self.head(mean_pool(hidden, mask)).squeeze(1)  # one score per sequence
+
+
+def dev_train_seconds(name):
+    """Training time that the dev run of this model saved in results.csv."""
+    rows = pd.read_csv(RESULTS_DIR / "results.csv")
+    rows = rows[(rows.model == name) & (rows.split == "dev")]
+    return rows.train_seconds.iloc[-1] if len(rows) else None
 
 
 def batches(df, tokenizer, batch_size, shuffle=False):
@@ -68,11 +77,14 @@ if __name__ == "__main__":
     parser.add_argument("--batch", type=int, default=32)
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--patience", type=int, default=1, help="early stopping: epochs without dev improvement")
+    parser.add_argument("--tag", default="", help="name for this setting, e.g. lr2e-5")
     parser.add_argument("--quick", action="store_true")
-    parser.add_argument("--test", action="store_true")
+    parser.add_argument("--test", action="store_true", help="no training: score the saved model on the test set")
     args = parser.parse_args()
     torch.manual_seed(0)
     np.random.seed(0)
+    name = "dnabert2_finetuned" + (f"_{args.tag}" if args.tag else "") + ("_quick" if args.quick else "")
+    path = MODELS_DIR / f"{name}.pt"
 
     train, dev, test = load_data()
     if args.quick:
@@ -80,12 +92,16 @@ if __name__ == "__main__":
 
     tokenizer, bert = load_dnabert()
     model = DNABertClassifier(bert).to(DEVICE)
+
+    if args.test:  # final step: no training, just score the saved model on the test set
+        model.load_state_dict(torch.load(path, map_location=DEVICE))
+        n_params = sum(p.numel() for p in model.parameters())
+        evaluate(name, test.label, run_epoch(model, test, tokenizer, args.batch)[1], "test", dev_train_seconds(name), n_params)
+        raise SystemExit
+
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
     total_steps = args.epochs * int(np.ceil(len(train) / args.batch))
     scheduler = get_linear_schedule_with_warmup(optimizer, int(0.1 * total_steps), total_steps)  # warm up, then decay
-    name = "dnabert2_finetuned" + ("_quick" if args.quick else "")
-    path = MODELS_DIR / f"{name}.pt"
-
     # Train with early stopping on dev loss; keep the best model on disk
     best_loss, bad_epochs, start = float("inf"), 0, time.time()
     for epoch in range(1, args.epochs + 1):
@@ -105,5 +121,3 @@ if __name__ == "__main__":
     model.load_state_dict(torch.load(path))
     n_params = sum(p.numel() for p in model.parameters())
     evaluate(name, dev.label, run_epoch(model, dev, tokenizer, args.batch)[1], "dev", seconds, n_params)
-    if args.test:
-        evaluate(name, test.label, run_epoch(model, test, tokenizer, args.batch)[1], "test", seconds, n_params)

@@ -6,9 +6,12 @@ Run one tokenizer at a time:
     python step4_bilstm.py --tokenizer bpe512    # our BPE tokenizers (run step 3 first)
     python step4_bilstm.py --tokenizer bpe4096
 Extra options:
-    --quick   tiny subset, just to check the code runs
-    --test    final run only: also score the test set
     --lr, --emb, --hidden, --batch, --epochs   hyperparameters (tune them on dev)
+    --tag     a name for this setting, so tuning runs don't overwrite each other
+              e.g.  python step4_bilstm.py --tokenizer char --lr 5e-4 --tag lr5e-4
+    --quick   tiny subset, just to check the code runs
+    --test    final step: NO training; load the saved model and score the test set once
+              e.g.  python step4_bilstm.py --tokenizer char --tag lr5e-4 --test
 """
 import argparse
 import itertools
@@ -20,7 +23,9 @@ from tokenizers import Tokenizer
 from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence
 
-from common import MODELS_DIR, evaluate, load_data
+import pandas as pd
+
+from common import MODELS_DIR, RESULTS_DIR, evaluate, load_data
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 PAD, UNK = 0, 1  # special token ids
@@ -71,6 +76,13 @@ class BiLSTM(nn.Module):
         return self.out(h).squeeze(1)         # a score; sigmoid(score) = probability of promoter
 
 
+def dev_train_seconds(name):
+    """Training time that the dev run of this model saved in results.csv."""
+    rows = pd.read_csv(RESULTS_DIR / "results.csv")
+    rows = rows[(rows.model == name) & (rows.split == "dev")]
+    return rows.train_seconds.iloc[-1] if len(rows) else None
+
+
 def batches(ids_list, labels, batch_size, shuffle=False):
     """Yield padded batches: ids [B, T] and labels [B]."""
     order = np.random.permutation(len(ids_list)) if shuffle else np.arange(len(ids_list))
@@ -110,11 +122,14 @@ if __name__ == "__main__":
     parser.add_argument("--batch", type=int, default=64)
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--patience", type=int, default=3, help="early stopping: epochs without dev improvement")
+    parser.add_argument("--tag", default="", help="name for this setting, e.g. lr5e-4")
     parser.add_argument("--quick", action="store_true")
-    parser.add_argument("--test", action="store_true")
+    parser.add_argument("--test", action="store_true", help="no training: score the saved model on the test set")
     args = parser.parse_args()
     torch.manual_seed(0)
     np.random.seed(0)
+    name = f"bilstm_{args.tokenizer}" + (f"_{args.tag}" if args.tag else "") + ("_quick" if args.quick else "")
+    path = MODELS_DIR / f"{name}.pt"
 
     train, dev, test = load_data()
     if args.quick:
@@ -124,10 +139,16 @@ if __name__ == "__main__":
     y_train, y_dev, y_test = train.label.values, dev.label.values, test.label.values
     print(f"{args.tokenizer}: vocab {vocab_size}, ~{np.mean([len(x) for x in X_dev]):.0f} tokens per sequence, device {DEVICE}")
 
+    if args.test:  # final step: no training, just score the saved model on the test set
+        checkpoint = torch.load(path, map_location=DEVICE)
+        model = BiLSTM(checkpoint["vocab_size"], checkpoint["args"]["emb"], checkpoint["args"]["hidden"]).to(DEVICE)
+        model.load_state_dict(checkpoint["state"])
+        n_params = sum(p.numel() for p in model.parameters())
+        evaluate(name, y_test, run_epoch(model, X_test, y_test, args.batch)[1], "test", dev_train_seconds(name), n_params)
+        raise SystemExit
+
     model = BiLSTM(vocab_size, args.emb, args.hidden).to(DEVICE)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    name = f"bilstm_{args.tokenizer}" + ("_quick" if args.quick else "")
-    path = MODELS_DIR / f"{name}.pt"
 
     # Train with early stopping on dev loss; keep the best model on disk
     best_loss, bad_epochs, start = float("inf"), 0, time.time()
@@ -148,5 +169,3 @@ if __name__ == "__main__":
     model.load_state_dict(torch.load(path)["state"])
     n_params = sum(p.numel() for p in model.parameters())
     evaluate(name, y_dev, run_epoch(model, X_dev, y_dev, args.batch)[1], "dev", seconds, n_params)
-    if args.test:
-        evaluate(name, y_test, run_epoch(model, X_test, y_test, args.batch)[1], "test", seconds, n_params)
