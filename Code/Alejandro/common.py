@@ -62,13 +62,27 @@ def style_axes(ax, grid="y"):
 
 
 def load_dnabert():
-    """Load the DNABERT-2 tokenizer and base model from Hugging Face (needs internet the first time)."""
+    """Load the DNABERT-2 tokenizer and base model (the first run downloads ~470 MB into models/dnabert2_hf)."""
+    import re
+    from huggingface_hub import snapshot_download
     from transformers import AutoModel, AutoTokenizer, BertConfig
 
-    tokenizer = AutoTokenizer.from_pretrained(DNABERT_NAME, trust_remote_code=True)
+    local = MODELS_DIR / "dnabert2_hf"
+    if not (local / "config.json").exists():
+        snapshot_download(DNABERT_NAME, local_dir=local)
+
+    # DNABERT-2 can use an optional fast attention that needs "triton", which doesn't exist on Windows.
+    # Switching it off makes the model use normal PyTorch attention (same results, a bit slower).
+    layers = local / "bert_layers.py"
+    code = layers.read_text(encoding="utf-8")
+    patched = re.sub(r"^(\s*)from \.flash_attn_triton import .*$", r"\1flash_attn_qkvpacked_func = None", code, flags=re.M)
+    if patched != code:
+        layers.write_text(patched, encoding="utf-8")
+
+    tokenizer = AutoTokenizer.from_pretrained(local, trust_remote_code=True)
     # Passing the config avoids a known "config_class is not consistent" loading error.
-    config = BertConfig.from_pretrained(DNABERT_NAME)
-    model = AutoModel.from_pretrained(DNABERT_NAME, trust_remote_code=True, config=config)
+    config = BertConfig.from_pretrained(local)
+    model = AutoModel.from_pretrained(local, trust_remote_code=True, config=config)
     return tokenizer, model
 
 
