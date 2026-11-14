@@ -1,0 +1,15 @@
+model,split,mcc,accuracy,f1,roc_auc,train_seconds,n_params
+logreg_counts_k3,test,0.7021,0.851,0.8513,0.9217,6,65
+bilstm_bpe4096,test,0.7156,0.8578,0.86,0.9331,96,461057
+logreg_counts_k4,test,0.7263,0.8632,0.8643,0.9323,22,257
+logreg_tfidf_k3,test,0.7274,0.8637,0.8638,0.9344,10,65
+logreg_counts_k5,test,0.7318,0.8659,0.8675,0.939,17,1025
+logreg_tfidf_k4,test,0.7432,0.8716,0.8725,0.9405,15,257
+logreg_counts_k6,test,0.7453,0.8726,0.8744,0.9425,22,4097
+logreg_tfidf_k5,test,0.7486,0.8743,0.8756,0.9433,21,1025
+logreg_tfidf_k6,test,0.7567,0.8784,0.8792,0.9441,17,4097
+bilstm_bpe512,test,0.7601,0.8801,0.881,0.9491,287,231681
+bilstm_kmer,test,0.7665,0.8833,0.8844,0.9475,529,461185
+dnabert2_frozen_logreg,test,0.7841,0.8921,0.893,0.9534,5,769
+bilstm_char,test,0.8264,0.913,0.9149,0.9697,615,199297
+dnabert2_finetuned_lr5e-5,test,0.868,0.934,0.9339,0.9853,2148,117069313
