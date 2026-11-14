@@ -54,4 +54,9 @@ for label, name in [(1, "Promoters"), (0, "Non-promoters")]:
     starts = Counter(m.start() + 1 for s in train.sequence[train.label == label] for m in re.finditer(pattern, s))
     print(f"\n{name}: most common TATA box start positions (position, count):", starts.most_common(5))
 
+# 5. The last 15 letters (286-300): how many non-promoters have exactly the same last 15 letters as some promoter?
+promoter_ends = set(train.sequence[train.label == 1].str[-15:])
+copied = train.sequence[train.label == 0].str[-15:].isin(promoter_ends)
+print(f"\nNon-promoters whose last 15 letters match a promoter's last 15 letters: {copied.mean():.1%} ({copied.sum()} of {len(copied)})")
+
 print(f"\nFigures saved in {RESULTS_DIR}")

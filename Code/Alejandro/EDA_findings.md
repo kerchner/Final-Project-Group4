@@ -22,7 +22,7 @@ Promoters have more G and C letters (61% on average) than non-promoters (54%). I
 
 ![GC content by position](results/eda_gc_by_position.png)
 
-Promoters have more G and C everywhere, and even more near the gene start (letter ~250, according to the dataset documentation). The dip at ~220 is the TATA box area. Both classes look similar at a few spots (~220, ~250 and the last 15 letters). In 72% of non-promoters, the last 15 letters are copied from real promoters.
+Promoters have more G and C everywhere, and even more near the gene start (letter ~250, according to the dataset documentation). The dip at ~220 is the TATA box area. Both classes look similar at a few spots (~220, ~250 and the last 15 letters). In 72.1% of non-promoters (17,065 of 23,684), the last 15 letters are exactly the same as a real promoter's last 15 letters.
 
 ## TATA box
 

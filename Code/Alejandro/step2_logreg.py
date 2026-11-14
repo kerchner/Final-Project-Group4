@@ -6,6 +6,7 @@ Final run:  python step2_logreg.py --test   (also scores the test set, once)
 import argparse
 import time
 
+import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import matthews_corrcoef
@@ -19,6 +20,7 @@ parser.add_argument("--test", action="store_true", help="also evaluate on the te
 args = parser.parse_args()
 
 train, dev, test = load_data()
+overall_best = None  # the best of all 8 combinations (by dev MCC)
 
 for k in [3, 4, 5, 6]:
     for features in ["counts", "tfidf"]:
@@ -42,7 +44,21 @@ for k in [3, 4, 5, 6]:
 
         model = best["model"]
         name = f"logreg_{features}_k{k}"
+        if overall_best is None or best["mcc"] > overall_best["mcc"]:
+            overall_best = {"mcc": best["mcc"], "model": model, "name": name}
         n_params = model[-1].coef_.size + 1   # one weight per k-mer + intercept
         evaluate(name, dev.label, model.predict_proba(dev.sequence)[:, 1], "dev", best["seconds"], n_params)
         if args.test:
             evaluate(name, test.label, model.predict_proba(test.sequence)[:, 1], "test", best["seconds"], n_params)
+
+# What the best model learned: the chunks with the biggest weights (+ toward promoter, - toward not promoter)
+chunks, weights = overall_best["model"][0].get_feature_names_out(), overall_best["model"][-1].coef_[0]
+order = np.argsort(weights)
+top_pos, top_neg = order[::-1][:5], order[:5]
+print(f"\nBest model on dev: {overall_best['name']}")
+print("Top 5 chunks toward promoter:     " + ", ".join(f"{chunks[i]} ({weights[i]:+.2f})" for i in top_pos))
+print("Top 5 chunks toward not promoter: " + ", ".join(f"{chunks[i]} ({weights[i]:+.2f})" for i in top_neg))
+print("Share of training rows that contain each chunk:")
+for i in list(top_pos) + list(top_neg):
+    has = train.sequence.str.contains(chunks[i])
+    print(f"  {chunks[i]}: promoters {has[train.label == 1].mean():.1%} | non-promoters {has[train.label == 0].mean():.1%}")

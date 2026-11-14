@@ -41,13 +41,20 @@ Each chunk gets a weight. A positive weight pushes toward "promoter," and a nega
 | CCCGCC | +0.41 | GTACGA | −0.36 |
 | TTCCGG | +0.40 | ATATCG | −0.36 |
 
-The signs match how often the chunks appear in each class (training set):
+The signs match how often the chunks appear in each class (share of training rows that contain the chunk, printed by `step2_logreg.py`):
 
-| Chunk | Rows with it: promoters | Rows with it: non-promoters |
-|---|---|---|
-| GGCGGG | 38% | 22% |
-| CGGAAG | 13% | 9% |
-| CGGATA | 1% | 5% |
+| Chunk | Weight | Promoters | Non-promoters |
+|---|---|---|---|
+| CGGAAG | +0.48 | 13.0% | 9.3% |
+| GGAAGT | +0.47 | 13.3% | 9.0% |
+| GGCGGG | +0.41 | 37.9% | 22.4% |
+| CCCGCC | +0.41 | 35.3% | 20.2% |
+| TTCCGG | +0.40 | 11.6% | 9.0% |
+| CGGATA | −0.39 | 1.2% | 4.6% |
+| TATCGG | −0.38 | 0.8% | 4.6% |
+| CGCATA | −0.37 | 1.0% | 4.5% |
+| GTACGA | −0.36 | 0.7% | 4.3% |
+| ATATCG | −0.36 | 0.5% | 4.4% |
 
 *Interpretation (not tested):* the top promoter chunks look like known promoter signals (ETS sites and GC boxes), so the model may have found real biology by itself.
 
