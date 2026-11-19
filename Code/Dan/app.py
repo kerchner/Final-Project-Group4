@@ -6,6 +6,8 @@ import pandas as pd
 import json
 
 from logistic_regression_model import LogisticRegressionModel
+from bilstm_model import BiLSTMModel
+from dnabert2_frozen_model import DNABERT2FrozenModel
 from model_utils import (
     load_model,
     DummyLogisticRegressionModel,
@@ -14,6 +16,16 @@ from model_utils import (
     DummyDNABERTFineTunedModel,
     ModelRegistry,
 )
+
+RESULTS_DIR = Path(__file__).parent / "results"
+
+# BiLSTM checkpoints (one per tokenizer), in dropdown order
+BILSTM_LABELS = {
+    "char": "BiLSTM (char tokens)",
+    "kmer": "BiLSTM (6-mer tokens)",
+    "bpe512": "BiLSTM (BPE-512 tokens)",
+    "bpe4096": "BiLSTM (BPE-4096 tokens)",
+}
 
 
 st.set_page_config(page_title="Promoter Detector", layout="wide")
@@ -27,11 +39,12 @@ st.markdown(
 # Initialize model registry
 @st.cache_resource
 def initialize_models():
-    """Initialize and return model registry with all available models."""
+    """Initialize and return (model registry, list of load errors)."""
     registry = ModelRegistry()
+    load_errors = []
 
     # Load or create placeholder for logistic regression model
-    model_path = Path(__file__).parent / "results" / "logistic_regression_model.pkl"
+    model_path = RESULTS_DIR / "logistic_regression_model.pkl"
     if model_path.exists():
         clf, vectorizer, k = load_model(str(model_path))
         lr_model = LogisticRegressionModel(clf, vectorizer, k)
@@ -40,27 +53,79 @@ def initialize_models():
         # Register placeholder until trained model is available
         registry.register("Logistic Regression (k-mer TF-IDF)", DummyLogisticRegressionModel())
 
-    # Register placeholder models for other models (under development)
-    registry.register("BiLSTM with Learned Embeddings", DummyBiLSTMModel())
-    registry.register("DNABERT-2 (Frozen Embeddings)", DummyDNABERTFrozenModel())
+    # BiLSTM: one checkpoint per tokenizer (char is the best on dev and test)
+    for kind, label in BILSTM_LABELS.items():
+        try:
+            registry.register(label, BiLSTMModel(str(RESULTS_DIR / f"bilstm_{kind}.pt")))
+        except Exception as e:
+            load_errors.append(f"{label}: {e}")
+            registry.register(label, DummyBiLSTMModel())
+
+    # DNABERT-2 frozen: pretrained model from the Hugging Face cache + saved LR head
+    try:
+        registry.register("DNABERT-2 (Frozen Embeddings)",
+                          DNABERT2FrozenModel(str(RESULTS_DIR / "dnabert2_frozen_head.pkl")))
+    except Exception as e:
+        load_errors.append(f"DNABERT-2 (frozen): {e}")
+        registry.register("DNABERT-2 (Frozen Embeddings)", DummyDNABERTFrozenModel())
+
     registry.register("DNABERT-2 (Fine-tuned)", DummyDNABERTFineTunedModel())
 
-    return registry
+    return registry, load_errors
 
 
 @st.cache_data
-def load_test_results():
-    """Load test results for the logistic regression model."""
-    results_path = Path(__file__).parent / "results" / "logistic_regression_test_results.json"
+def load_results(filename: str):
+    """Load a saved results JSON from results/, or None if it doesn't exist."""
+    results_path = RESULTS_DIR / filename
     if results_path.exists():
         with open(results_path) as f:
             return json.load(f)
     return None
 
 
+def show_bilstm_attribution(model: BiLSTMModel, sequence: str):
+    """Per-base importance from in-silico mutagenesis, as a chart and a table."""
+    with st.spinner("Computing base importance (in-silico mutagenesis)..."):
+        exp = model.explain(sequence)
+    eff = exp["per_base"]
+
+    st.subheader("🔍 Base Importance (In-Silico Mutagenesis)")
+    st.markdown(
+        "**Method:** each base is replaced in turn with each of the other three bases, and the "
+        "change in the promoter logit is recorded. A base's importance is the average change "
+        "across its three alternatives.\n\n"
+        "Positive values support PROMOTER; negative values oppose it. Units are logits."
+    )
+    chart_df = pd.DataFrame({"importance": eff},
+                            index=pd.RangeIndex(1, len(eff) + 1, name="position"))
+    st.bar_chart(chart_df)
+
+    top = sorted(range(len(eff)), key=lambda i: -abs(eff[i]))[:15]
+    table = pd.DataFrame([{
+        "position": i + 1,
+        "base": sequence[i],
+        "importance": float(eff[i]),
+        "direction": "supports" if eff[i] > 0 else "opposes",
+    } for i in top])
+    st.markdown("**Most influential bases:**")
+    st.dataframe(table.round(4), hide_index=True)
+
+    if len(sequence) > exp["covered"]:
+        st.caption(f"Only the first {exp['covered']} bases are scanned.")
+
+
+def show_test_metrics(metrics: dict):
+    """Show the scalar test metrics (skips the confusion matrix)."""
+    for metric, value in metrics.items():
+        if isinstance(value, float):
+            st.metric(metric.upper(), f"{value:.4f}")
+
+
 # Load models and results
-registry = initialize_models()
-test_results = load_test_results()
+registry, load_errors = initialize_models()
+test_results = load_results("logistic_regression_test_results.json")
+dnabert_test_results = load_results("dnabert2_frozen_test_results.json")
 
 if not registry.list_models():
     st.error("No models available. Please run logistic-regression.py first.")
@@ -82,18 +147,35 @@ with st.sidebar:
     st.header("Model Information")
     st.write(f"**Model:** {selected_model_name}")
 
+    for err in load_errors:
+        st.warning(f"Could not load {err}")
+
     # Show model-specific info
     if isinstance(selected_model, LogisticRegressionModel):
         # Handle both single k and combined k-mers
         if selected_model.is_combined:
-            st.write(f"**K-mer sizes:** {selected_model.k_values}")
+            k_text = ", ".join(str(k) for k in selected_model.k_values)
+            n_features = sum(len(v.vocabulary_) for v in selected_model.vectorizers)
+            st.write(f"**Feature set:** combined k-mers, k = {k_text}")
+            st.write(f"**TF-IDF features:** {n_features:,}")
         else:
             st.write(f"**K-mer size:** {selected_model.k_values[0]}")
         st.write("**Status:** ✅ Implemented and trained")
         if test_results:
+            st.write(f"**Best config (dev):** {test_results['best_config']}")
             st.subheader("Test Set Metrics")
-            for metric, value in test_results["test_metrics"].items():
-                st.metric(metric.upper(), f"{value:.4f}")
+            show_test_metrics(test_results["test_metrics"])
+    elif isinstance(selected_model, (BiLSTMModel, DNABERT2FrozenModel)):
+        st.write("**Status:** ✅ Implemented and loaded")
+        if isinstance(selected_model, BiLSTMModel):
+            st.write(f"**Tokenizer:** {selected_model.tokenizer.kind}")
+            test = load_results(f"bilstm_{selected_model.tokenizer.kind}_test_results.json")
+        else:
+            st.write(f"**Pooling:** {selected_model.pooling}")
+            test = dnabert_test_results
+        if test:
+            st.subheader("Test Set Metrics")
+            show_test_metrics(test["test_metrics"])
     else:
         st.write("**Status:** 🔄 Placeholder (under development)")
         st.info(
@@ -168,11 +250,19 @@ with tab1:
                     result.get("total_features_present", 0),
                 )
             else:
-                st.metric("Model", "Placeholder")
+                is_real = isinstance(selected_model, (BiLSTMModel, DNABERT2FrozenModel))
+                st.metric("Model", "Trained" if is_real else "Placeholder")
 
         # Display contributing features (if available)
         if selected_model.supports_features and result.get("top_contributing"):
             st.subheader("🔍 Top Contributing K-mers")
+            st.markdown(
+                "**Method:** each k-mer in the sequence gets a contribution equal to its TF-IDF "
+                "weight multiplied by the logistic regression coefficient learned for it. "
+                "The contributions are added to the model's score, so the largest ones have the "
+                "most influence on the prediction.\n\n"
+                "Positive contributions support PROMOTER; negative ones oppose it."
+            )
 
             # Split into supporting and opposing
             supporting = [x for x in result["top_contributing"] if x["direction"] == "supports"]
@@ -204,6 +294,8 @@ with tab1:
                 "- **coef**: Logistic regression coefficient (higher = more promoter-like)\n"
                 "- **contribution**: tfidf × coef (actual impact on prediction)"
             )
+        elif isinstance(selected_model, BiLSTMModel):
+            show_bilstm_attribution(selected_model, sequence_input)
         elif not selected_model.supports_features:
             st.info(
                 "ℹ️ This model does not provide feature importance analysis yet. "
@@ -296,8 +388,9 @@ with tab3:
     **Status:** ✅ Implemented and trained
 
     **How it works:**
-    - Extracts overlapping k-mers from DNA sequences (k ∈ {3,4,5,6,7})
+    - Extracts overlapping k-mers from DNA sequences for each k ∈ {3,4,5,6,7}
     - Applies TF-IDF weighting to each k-mer (rare k-mers get higher weight)
+    - Combines the k-mer features from all five k values into one feature set
     - Trains logistic regression on these features
     - Provides interpretable feature importance via k-mer coefficients
 
@@ -311,24 +404,23 @@ with tab3:
     # BiLSTM
     st.subheader("2. BiLSTM with Learned Embeddings")
     st.markdown("""
-    **Status:** 🔄 Placeholder (under development)
+    **Status:** ✅ Implemented (all four tokenizer variants are loaded in this app)
 
-    **Planned approach:**
-    - Learns character and k-mer embeddings from the training data
-    - Uses bidirectional LSTM to capture sequence context
-    - Tests single nucleotide and k-mer (k ∈ {512, 4,096}) tokenization vocabularies
+    **How it works:**
+    - Learns an embedding for each token from the training data
+    - Uses a bidirectional LSTM to capture sequence context
+    - Compares four tokenizers: single nucleotides, overlapping 6-mers, and BPE with 512 or 4,096 tokens
     """)
 
     # DNABERT-2 Frozen
     st.subheader("3. DNABERT-2 (Frozen Embeddings)")
     st.markdown("""
-    **Status:** 🔄 Placeholder (under development)
+    **Status:** ✅ Implemented and loaded
 
-    **Planned approach:**
-    - Uses pre-trained DNABERT-2 model (117M parameters)
-    - Freezes the transformer embeddings
-    - Adds logistic regression head on top
-    - Applies TF-IDF vectorization
+    **How it works:**
+    - Uses the pre-trained DNABERT-2 model (117M parameters) as a fixed feature extractor
+    - Mean-pools the final hidden states into one 768-dimensional vector per sequence
+    - Trains a logistic regression head on those vectors; the DNABERT-2 weights are never updated
 
     **Rationale:**
     - Transfer learning from a model trained on genomic data
@@ -354,12 +446,12 @@ with tab3:
     # Interpretability
     st.subheader("5. Interpretability Analysis")
     st.markdown("""
-    **Status:** 🔄 Under development
+    **Status:** ✅ Implemented for the BiLSTM models (in-silico mutagenesis); 🔄 not yet for DNABERT-2
 
-    **Planned approach:**
-    - Integrated Gradients to attribute predictions to input positions
-    - Identify which nucleotides and motifs drive predictions
-    - Enable inspection of learned patterns
+    **How it works (BiLSTM):**
+    - Mutates each base in turn to each of the other three bases
+    - Records how much the promoter logit changes for each mutation
+    - Shows the average effect per position, so each base's contribution to the prediction is visible
     """)
 
     # Metrics

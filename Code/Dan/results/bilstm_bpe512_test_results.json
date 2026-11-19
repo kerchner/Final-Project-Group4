@@ -1,0 +1,31 @@
+{
+  "model": "bilstm_bpe512",
+  "tokenizer": "bpe512",
+  "config": {
+    "embedding_dim": 64,
+    "hidden_dim": 128,
+    "num_layers": 1,
+    "dropout": 0.3,
+    "lr": 0.001,
+    "batch_size": 128
+  },
+  "n_params": 231937,
+  "train_seconds": 890.2681069374084,
+  "best_epoch": 5,
+  "test_metrics": {
+    "mcc": 0.7499841399085669,
+    "accuracy": 0.8741554054054054,
+    "f1": 0.8791565287915653,
+    "roc_auc": 0.950309774916678,
+    "confusion_matrix": [
+      [
+        2465,
+        475
+      ],
+      [
+        270,
+        2710
+      ]
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+[bilstm_bpe4096] vocab 4096, train tokens (47356, 70), ~60 tokens/seq, device mps
+  epoch  1  train 0.5643  val 0.4502  val MCC 0.5971  (100s)
+  epoch  2  train 0.4412  val 0.4275  val MCC 0.6346  (83s)
+  epoch  3  train 0.3857  val 0.3496  val MCC 0.7117  (91s)
+  epoch  4  train 0.3430  val 0.3294  val MCC 0.7229  (94s)
+  epoch  5  train 0.3123  val 0.3107  val MCC 0.7525  (103s)
+  epoch  6  train 0.2913  val 0.3006  val MCC 0.7527  (83s)
+  epoch  7  train 0.2720  val 0.3053  val MCC 0.7558  (81s)
+  epoch  8  train 0.2612  val 0.3104  val MCC 0.7647  (85s)
+  epoch  9  train 0.2363  val 0.3166  val MCC 0.7627  (79s)
+  epoch 10  train 0.2253  val 0.3098  val MCC 0.7653  (80s)
+  early stopping
+[bilstm_bpe4096] DEV  MCC 0.7527  acc 0.8764  F1 0.8754  AUC 0.9474  best epoch 6  880s  461,313 params

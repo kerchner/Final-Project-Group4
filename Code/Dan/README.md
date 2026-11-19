@@ -83,49 +83,71 @@ Compare machine learning approaches to identify which tokenization strategy and 
 - ✅ Batch processing
 
 **Performance (Test Set):**
-- MCC: 0.86, Accuracy: 0.88, F1: 0.88, ROC-AUC: 0.93
+- MCC: 0.77, Accuracy: 0.89, F1: 0.89, ROC-AUC: 0.95
+- Confusion matrix (TN, FP / FN, TP): 2608, 332 / 339, 2641
+- Selected on dev (MCC 0.81): combined k=3–7 TF-IDF features, C=1.0, L1 penalty
 
 ---
 
-### 2. BiLSTM with Learned Embeddings (🔄 Placeholder)
+### 2. BiLSTM with Learned Embeddings (✅ Implemented, dev results only)
 
-**Planned Architecture:**
-- BPE embeddings learned from training data
-- Vocabulary: 512 or 4,096 tokens
-- BiLSTM: bidirectional, 2 layers, 256 hidden
-- Output: sigmoid for binary classification
+**Architecture:**
+- Four tokenizers compared: single letters (char), overlapping 6-mers, BPE-512, BPE-4096 (BPE trained on the training split only)
+- Learned 64-dim embeddings → 1-layer bidirectional LSTM (128 hidden units per direction)
+- Pooling: masked max-pool over all timesteps; padding ignored
+- Sigmoid output with BCE loss; Adam (lr 1e-3), batch 128, dropout 0.3
+- Early stopping on dev loss, with LR halved on plateau
 
 **Files:**
-- Training skeleton: `bilstm_train.py`
-- Model skeleton: `bilstm_model.py`
+- Training: `bilstm_train.py`
+- Model: `bilstm_model.py`
+- Checkpoints: `results/bilstm_<tokenizer>.pt`
+- Summary: `results/bilstm_summary.csv`, per-run logs and `results/bilstm_<tokenizer>_dev_results.json`
 
-**Expected Performance:**
-- MCC: ~0.85-0.88
-- Training: 1-2 hours on GPU
-- Inference: ~50ms per sequence
+**Performance (Dev Set):**
 
-**Implementation:** 4-8 hours dev + 1-2 hours training
+| Tokenizer | Vocab | Params | MCC | Accuracy | F1 | ROC-AUC | Best epoch | Train time |
+|---|---|---|---|---|---|---|---|---|
+| char | 6 | 199,553 | **0.858** | **0.929** | **0.929** | **0.980** | 19 | 3.6 h* |
+| BPE-512 | 512 | 231,937 | 0.777 | 0.888 | 0.891 | 0.957 | 5 | 15 min |
+| 6-mer | 4,098 | 461,441 | 0.758 | 0.876 | 0.883 | 0.947 | 4 | 50 min |
+| BPE-4096 | 4,096 | 461,313 | 0.753 | 0.876 | 0.875 | 0.947 | 6 | 15 min |
+
+\*One epoch of the char run took 7,409 s, so the wall-clock total is inflated; the later epochs in the log took about 4–5 min each.
+
+**Performance (Test Set):**
+
+| Tokenizer | MCC | Accuracy | F1 | ROC-AUC | Confusion matrix (TN, FP / FN, TP) |
+|---|---|---|---|---|---|
+| char | **0.832** | **0.916** | **0.917** | **0.975** | 2681, 259 / 238, 2742 |
+| BPE-512 | 0.750 | 0.874 | 0.879 | 0.950 | 2465, 475 / 270, 2710 |
+| 6-mer | 0.736 | 0.865 | 0.874 | 0.936 | 2339, 601 / 199, 2781 |
+| BPE-4096 | 0.717 | 0.858 | 0.860 | 0.938 | 2515, 425 / 413, 2567 |
+
+- Dev numbers are optimistic: dev loss was used for early stopping and tokenizer selection.
+- The char model is the strongest on both dev and test, with a 0.08 MCC lead over the next model.
 
 ---
 
-### 3. DNABERT-2 with Frozen Embeddings (🔄 Placeholder)
+### 3. DNABERT-2 with Frozen Embeddings (✅ Implemented)
 
-**Planned Architecture:**
-- Pre-trained DNABERT-2 (117M parameters) from Hugging Face
-- Frozen transformer weights
-- Logistic regression head on [CLS] embeddings
-- Low cost, transfer learning approach
+**Architecture:**
+- Pre-trained DNABERT-2 (117M parameters, `zhihan1996/DNABERT-2-117M`) with frozen weights
+- Each sequence is embedded once; mean pooling over tokens gives a 768-dim vector (mean beat [CLS] on dev: 0.802 vs 0.762 MCC)
+- Standardized logistic regression head (C = 0.001) trained on the cached embeddings
+- Embeddings cached in `results/dnabert2_embeddings_{train,dev,test}.npz`
 
 **Files:**
-- Training skeleton: `dnabert2_frozen_train.py`
-- Model skeleton: `dnabert2_frozen_model.py`
+- Training: `dnabert2_frozen_train.py`
+- Model: `dnabert2_frozen_model.py`
+- Head: `results/dnabert2_frozen_head.pkl`
+- Results: `results/dnabert2_frozen_test_results.json`, `results/dnabert2_frozen_dev_results.csv`
 
-**Expected Performance:**
-- MCC: ~0.87-0.89
-- Training: 30-60 minutes total
-- Inference: ~100ms per sequence
-
-**Implementation:** 2-4 hours dev + 30-60 min training
+**Performance (Test Set):**
+- MCC: 0.78, Accuracy: 0.89, F1: 0.89, ROC-AUC: 0.95
+- Confusion matrix (TN, FP / FN, TP): 2609, 331 / 310, 2670
+- Dev MCC for the selected config: 0.80
+- Embedding time for all splits: ~12 min (692 s)
 
 ---
 
@@ -245,6 +267,14 @@ Once a model is fully implemented, simply replace the placeholder class with the
   - Positive: helps predict promoter
   - Negative: helps predict non-promoter
 
+**Base importance (BiLSTM only)**
+- Each base is replaced in turn with each of the other three bases, and the change in the promoter logit is recorded
+- A base's importance is the average change across its three alternatives
+- Positive: the base pushes the prediction toward PROMOTER; negative: toward NOT PROMOTER
+- Units are logits; the chart shows one bar per position, and the table lists the 15 largest
+- Scores single-base effects, so a motif spread across several bases appears as several moderate bars
+- Only the first 512 bases are scanned
+
 ---
 
 ## Architecture
@@ -267,6 +297,18 @@ Contribution = TF-IDF Weight × Logistic Regression Coefficient
 **Example:**
 - K-mer: "ATG", TF-IDF: 0.12, Coefficient: +0.85
 - Contribution: +0.10 (supports promoter)
+
+### Feature Importance (BiLSTM)
+
+In-silico mutagenesis, implemented as `BiLSTMModel.explain()` in `bilstm_model.py`:
+
+```
+importance(i) = mean over b ≠ seq[i] of [ logit(seq) − logit(seq with base i replaced by b) ]
+```
+
+- Every mutant is scored in a single batch, so one sequence needs about 3 × L forward passes (about 2 s for 300 bp)
+- Mutations are applied to the DNA, not to tokens, so the same code works for all four tokenizers
+- Integrated Gradients was tried first and dropped: the model's logit changes too sharply near the zero-embedding baseline for the path integral to converge, even in float64 with up to 1,000 steps (gradients were checked against finite differences and were correct)
 
 ---
 
