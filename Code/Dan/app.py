@@ -84,17 +84,55 @@ def load_results(filename: str):
     return None
 
 
-def show_bilstm_attribution(model: BiLSTMModel, sequence: str):
-    """Per-base importance from in-silico mutagenesis, as a chart and a table."""
-    with st.spinner("Computing base importance (in-silico mutagenesis)..."):
-        exp = model.explain(sequence)
+def show_base_attribution(model, sequence: str):
+    """Per-base importance as a chart and a table. Works for any model with explain()."""
+    if isinstance(model, DNABERT2FrozenModel):
+        method = st.radio(
+            "Attribution method",
+            ["occlusion", "gradient"],
+            format_func=lambda m: ("Token occlusion" if m == "occlusion"
+                                   else "Gradient x input (experimental)"),
+            horizontal=True,
+            key="dnabert_attr_method",
+        )
+        if method == "gradient":
+            st.warning(
+                "Experimental: on validation this method did not track the model's behavior. "
+                "Bases it ranks highest were less influential than random bases. "
+                "Use token occlusion for explanations."
+            )
+            spinner = "Computing base importance (gradient x input)..."
+            title = "🔍 Base Importance (Gradient x Input, experimental)"
+            method_text = (
+                "**Method:** the promoter logit is backpropagated to DNABERT-2's input embeddings, "
+                "and each embedding is multiplied by its gradient. DNABERT-2 tokens span several "
+                "bases, so each token's score is split evenly across its bases."
+            )
+        else:
+            spinner = "Computing base importance (token occlusion)..."
+            title = "🔍 Base Importance (Token Occlusion)"
+            method_text = (
+                "**Method:** each DNABERT-2 token is removed in turn (masked out of attention and "
+                "pooling), and the change in the promoter logit is recorded. A token's score is "
+                "split evenly across the bases it spans."
+            )
+        with st.spinner(spinner):
+            exp = model.explain(sequence, method=method)
+    else:
+        spinner = "Computing base importance (in-silico mutagenesis)..."
+        title = "🔍 Base Importance (In-Silico Mutagenesis)"
+        method_text = (
+            "**Method:** each base is replaced in turn with each of the other three bases, and the "
+            "change in the promoter logit is recorded. A base's importance is the average change "
+            "across its three alternatives."
+        )
+        with st.spinner(spinner):
+            exp = model.explain(sequence)
     eff = exp["per_base"]
 
-    st.subheader("🔍 Base Importance (In-Silico Mutagenesis)")
+    st.subheader(title)
     st.markdown(
-        "**Method:** each base is replaced in turn with each of the other three bases, and the "
-        "change in the promoter logit is recorded. A base's importance is the average change "
-        "across its three alternatives.\n\n"
+        method_text + "\n\n"
         "Positive values support PROMOTER; negative values oppose it. Units are logits."
     )
     chart_df = pd.DataFrame({"importance": eff},
@@ -188,6 +226,8 @@ with st.sidebar:
 tab1, tab2, tab3 = st.tabs(["Single Sequence", "Batch Prediction", "About"])
 
 # ── Tab 1: Single Sequence Prediction ──────────────────────────────────────
+MIN_SEQ_LEN = 3  # shortest sequence accepted for prediction
+
 with tab1:
     st.header("Single Sequence Prediction")
 
@@ -210,19 +250,23 @@ with tab1:
         st.write("")  # spacing
         st.metric("Sequence Length", len(sequence_input))
 
-        if len(sequence_input) < 3:
-            st.warning("⚠️ Sequence too short\n(minimum 3 bp)")
-            predict_button_disabled = True
-            button_text = "❌ Enter a sequence"
+    # Predict is always enabled; the input is checked when the button is pressed.
+    if st.button("🔍 Predict", use_container_width=True):
+        if len(sequence_input) < MIN_SEQ_LEN:
+            st.session_state["analysis"] = None
+            st.error(
+                f"Please enter a DNA sequence of at least {MIN_SEQ_LEN} bp "
+                f"(currently {len(sequence_input)} bp)."
+            )
         elif any(c not in "ACGT" for c in sequence_input):
-            st.warning("⚠️ Invalid characters\n(only ACGT allowed)")
-            predict_button_disabled = True
-            button_text = "❌ Fix sequence"
+            st.session_state["analysis"] = None
+            st.error("The sequence can only contain the bases A, C, G and T.")
         else:
-            predict_button_disabled = False
-            button_text = "✅ 🔍 Predict"
+            st.session_state["analysis"] = (selected_model_name, sequence_input)
 
-    if st.button(button_text, disabled=predict_button_disabled, use_container_width=True):
+    # Results are kept for the model and sequence that were last submitted, so they
+    # survive reruns such as changing the attribution method.
+    if st.session_state.get("analysis") == (selected_model_name, sequence_input):
         # Get prediction
         if selected_model.supports_features:
             result = selected_model.predict_with_features(sequence_input, top_n=15)
@@ -294,8 +338,8 @@ with tab1:
                 "- **coef**: Logistic regression coefficient (higher = more promoter-like)\n"
                 "- **contribution**: tfidf × coef (actual impact on prediction)"
             )
-        elif isinstance(selected_model, BiLSTMModel):
-            show_bilstm_attribution(selected_model, sequence_input)
+        elif isinstance(selected_model, (BiLSTMModel, DNABERT2FrozenModel)):
+            show_base_attribution(selected_model, sequence_input)
         elif not selected_model.supports_features:
             st.info(
                 "ℹ️ This model does not provide feature importance analysis yet. "
