@@ -166,7 +166,7 @@ test_results = load_results("logistic_regression_test_results.json")
 dnabert_test_results = load_results("dnabert2_frozen_test_results.json")
 
 if not registry.list_models():
-    st.error("No models available. Please run logistic-regression.py first.")
+    st.error("No models available. Please run logistic_regression_train.py first.")
     st.stop()
 
 # Sidebar with model selection
