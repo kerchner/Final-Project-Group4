@@ -1,0 +1,51 @@
+---
+title: "Tokenizers and Models for Human Promoter Detection"
+subtitle: "DATS 6312 NLP Final Project"
+author: "Ilgaz Kuscu · Dan Kerchner · Alejandro Gomez"
+date: today
+---
+
+## Overview and Motivation
+
+- TODO
+
+## Dataset
+
+- Origin
+- Descriptive metrics
+
+## Data Quality & Data Cleaning
+
+- TODO
+
+## Methodology:Tokenization of DNA Sequence Data
+
+- TODO
+
+## Methodology: Models
+
+- TODO
+
+## Evaluation
+
+- TODO
+
+## Results
+
+- TODO
+
+## Interpretability
+
+- TODO
+
+## Streamlit App
+
+- TODO
+
+## Conclusions and Future Work
+
+- TODO
+
+## References
+
+- TODO
