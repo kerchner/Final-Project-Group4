@@ -1,0 +1,27 @@
+project:
+  type: default
+  output-dir: docs
+  render:
+    - index.qmd
+  post-render:
+    - touch docs/.nojekyll
+
+format:
+  revealjs:
+    theme: default
+    slide-number: c/t
+    show-slide-number: all
+    hash-type: number
+    transition: slide
+    background-transition: fade
+    controls: true
+    progress: true
+    history: true
+    center: false
+    preview-links: auto
+    code-line-numbers: false
+    highlight-style: a11y
+    footer: "Tokenizers and Models for Human Promoter Detection"
+    width: 1100
+    margin: 0.05
+    link-external-newwindow: true
