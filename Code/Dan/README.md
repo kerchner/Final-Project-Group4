@@ -1,6 +1,10 @@
-# Human Promoter Detection - Multi-Model Streamlit Application
+# Human Promoter Detection: Dan's Models and Streamlit App
 
-A machine learning application for classifying DNA sequences as promoter or non-promoter regions. This project implements multiple models (logistic regression, BiLSTM, and DNABERT-2 variants) with a web interface for interactive predictions and feature importance visualization.
+Classifies 300 bp human DNA sequences as promoter or non-promoter. This folder holds Dan's implementations of four model families, the training scripts that produced their results, and a Streamlit app that loads the trained models for interactive prediction and per-base explanation.
+
+Status as of 2026-11-21: logistic regression, BiLSTM (four tokenizers) and frozen DNABERT-2 are trained, evaluated and loaded by the app. Fully fine-tuned DNABERT-2 is still a stub in this folder.
+
+For the documentation map, see [README-linked.md](README-linked.md).
 
 ## Quick Start
 
@@ -12,110 +16,86 @@ source ENV/bin/activate
 pip install -r requirements.txt
 ```
 
-### Training the Model
+`requirements.txt` pins `torch`, `transformers`, `tokenizers`, `scikit-learn` and `streamlit`.
 
-Before running the app, train the logistic regression baseline:
+### Run order
 
-```bash
-python logistic_regression_train.py
-```
+The data lives in `../data/prom_300_all/` (train.csv, dev.csv, test.csv). Run from `Code/Dan`:
 
-This will:
-1. Load training, validation, and test data from `../data/prom_300_all/`
-2. Test different hyperparameters (k ∈ {3,4,5,6,7}, C values, regularization types)
-3. Select the best model based on validation MCC
-4. Evaluate on the test set
-5. Save the trained model to `results/logistic_regression_model.pkl`
+| Step | Command | Writes |
+|---|---|---|
+| 1 (optional) | `python eda.py` | `eda_plots/` |
+| 2 | `python logistic_regression_train.py` | `results/logistic_regression_model.pkl`, `_test_results.json`, `_dev_results.csv` |
+| 3 | `python bilstm_train.py --tokenizer all` | `results/bilstm_<tokenizer>.pt`, `_dev_results.json`, `bilstm_summary.csv` |
+| 4 | `python bilstm_train.py --tokenizer <t> --test` (per tokenizer, after step 3) | `results/bilstm_<t>_test_results.json` |
+| 5 | `python dnabert2_frozen_train.py` | `results/dnabert2_frozen_head.pkl`, `_test_results.json`, `_dev_results.csv`, cached `dnabert2_embeddings_*.npz` |
+| 6 | `streamlit run app.py` | Opens at `http://localhost:8501` |
 
-**Expected output files:**
-- `results/logistic_regression_model.pkl` - Trained model and vectorizer(s)
-- `results/logistic_regression_test_results.json` - Final metrics
-- `results/logistic_regression_dev_results.csv` - All hyperparameter search results
-
-### Running the App
-
-```bash
-streamlit run app.py
-```
-
-App opens at `http://localhost:8501` in your browser.
-
----
+Step 2 must run before the app will show the logistic regression model; steps 3 to 5 are needed for the BiLSTM and frozen DNABERT-2 entries. Without a checkpoint the app falls back to a placeholder for that model and reports the load error. `dnabert2_finetuned_train.py` is not runnable yet (see Status).
 
 ## Project Overview
 
 ### Dataset
 
-- **Source:** `prom_300_all` from DNABERT-2 Genome Understanding Evaluation (GUE) benchmark
-- **Size:** ~47,000 training, 5,900 validation, 5,900 test sequences
-- **Format:** 300 bp DNA sequences labeled as promoter (1) or non-promoter (0)
-- **Location:** `../data/prom_300_all/` (train.csv, dev.csv, test.csv)
+- **Source:** `prom_300_all` from the DNABERT-2 Genome Understanding Evaluation (GUE) benchmark
+- **Size:** about 47,000 train, 5,900 dev, 5,900 test sequences
+- **Format:** 300 bp sequences labeled promoter (1) or non-promoter (0)
+- **Splits:** fixed train/dev/test
 
-### Goals
+### Protocol
 
-Compare machine learning approaches to identify which tokenization strategy and model architecture best capture promoter signals:
+- Hyperparameters are chosen on the **dev** split only.
+- Each final model is scored **once** on the test split.
+- Early stopping uses dev loss.
 
-1. **Classical baseline** - Logistic regression on k-mer TF-IDF
-2. **Recurrent networks** - BiLSTM with learned embeddings
-3. **Pretrained transformers** - DNABERT-2 (frozen and fine-tuned)
-4. **Interpretability** - Integrated Gradients for attribution
+## Models and Results
 
----
+Numbers below are from the JSON and CSV files in `results/`.
 
-## Models
+### Summary (test set)
 
-### 1. Logistic Regression (✅ Implemented)
+| Model | Status | Test MCC | Test accuracy | Test ROC-AUC |
+|---|---|---|---|---|
+| Logistic regression, combined k=3–7 | ✅ Trained, in app | 0.773 | 0.887 | 0.955 |
+| BiLSTM, single nucleotides | ✅ Trained, in app | **0.832** | 0.916 | 0.975 |
+| BiLSTM, 6-mers | ✅ Trained, in app | 0.736 | 0.865 | 0.936 |
+| BiLSTM, BPE-512 | ✅ Trained, in app | 0.750 | 0.874 | 0.950 |
+| BiLSTM, BPE-4096 | ✅ Trained, in app | 0.717 | 0.858 | 0.938 |
+| DNABERT-2, frozen + logistic regression | ✅ Trained, in app | 0.783 | 0.892 | 0.951 |
+| DNABERT-2, fully fine-tuned | 🔄 Stub in Dan's folder | see note | see note | see note |
 
-**Architecture:**
-- K-mer extraction: overlapping windows (k ∈ {3,4,5,6,7})
-- TF-IDF vectorization: rare k-mers weighted higher
-- Logistic regression with L1/L2 regularization
-- Hyperparameter search: k × C × regularization type
+The fine-tuned row is a placeholder here. Alejandro's group-folder run reports test MCC 0.868 (`../Alejandro/Tuning_and_test_findings.md`). That checkpoint is not in this repository, and it is not wired into the app.
 
-**Files:**
-- Training: `logistic_regression_train.py`
-- Model: `logistic_regression_model.py`
-- Saved: `results/logistic_regression_model.pkl`
+**Note on two sets of numbers.** Alejandro's folder and this folder trained separate runs of the same experiments, so the BiLSTM and logistic regression test numbers differ slightly between them (for example, BiLSTM single-nucleotide test MCC is 0.826 in `../Alejandro/results/summary_test.csv` and 0.832 here). The final report should use one run set and say which one it is.
 
-**Features:**
-- ✅ Fast inference (~1ms per sequence)
-- ✅ **Feature importance** - Shows which k-mers influenced each prediction
-- ✅ Batch processing
+### 1. Logistic Regression (✅)
 
-**Performance (Test Set):**
-- MCC: 0.77, Accuracy: 0.89, F1: 0.89, ROC-AUC: 0.95
-- Confusion matrix (TN, FP / FN, TP): 2608, 332 / 339, 2641
-- Selected on dev (MCC 0.81): combined k=3–7 TF-IDF features, C=1.0, L1 penalty
+- **Features:** overlapping k-mers for k = 3, 4, 5, 6, 7, each TF-IDF vectorized (sublinear TF), then stacked side by side. The combined vector has 21,824 features (64 + 256 + 1,024 + 4,096 + 16,384).
+- **Model:** `LogisticRegression` with the saga solver, L1 or L2 penalty via `l1_ratio`.
+- **Search:** k ∈ {3,…,7} individually and combined ("all"), C ∈ {0.01, 0.1, 1, 10}, penalty ∈ {L1, L2}. That is 48 configurations, all listed in `results/logistic_regression_dev_results.csv`.
+- **Selected:** combined k, C = 1.0, L1. Dev MCC 0.8091.
+- **Test:** MCC 0.7733, accuracy 0.8867, F1 0.8873, ROC-AUC 0.9545, log-loss 0.2748.
+- **Confusion matrix (test):** TN 2608, FP 332, FN 339, TP 2641.
+- The combined model beats the best single k (k=7, dev MCC 0.7987) by about 0.010 MCC on dev. See `Combined_K-Mer_Explanation.md`.
 
----
+**Files:** `logistic_regression_train.py`, `logistic_regression_model.py`.
 
-### 2. BiLSTM with Learned Embeddings (✅ Implemented, dev results only)
+### 2. BiLSTM with Learned Embeddings (✅)
 
-**Architecture:**
-- Four tokenizers compared: single letters (char), overlapping 6-mers, BPE-512, BPE-4096 (BPE trained on the training split only)
-- Learned 64-dim embeddings → 1-layer bidirectional LSTM (128 hidden units per direction)
-- Pooling: masked max-pool over all timesteps; padding ignored
-- Sigmoid output with BCE loss; Adam (lr 1e-3), batch 128, dropout 0.3
-- Early stopping on dev loss, with LR halved on plateau
+- **Architecture:** learned 64-dimensional embeddings → 1-layer bidirectional LSTM (128 hidden units per direction) → summary of the final hidden state of each direction, concatenated with a masked max-pool over positions → one logit (sigmoid gives the probability). Padding is ignored.
+- **Training:** Adam, lr 1e-3, batch 128, dropout 0.3, early stopping on dev loss, LR halved on plateau.
+- **Tokenizers:** single nucleotides (`char`), overlapping 6-mers (`kmer`), BPE-512 and BPE-4096. BPE vocabularies are trained on the training split only and stored in each checkpoint.
 
-**Files:**
-- Training: `bilstm_train.py`
-- Model: `bilstm_model.py`
-- Checkpoints: `results/bilstm_<tokenizer>.pt`
-- Summary: `results/bilstm_summary.csv`, per-run logs and `results/bilstm_<tokenizer>_dev_results.json`
+Dev results (`results/bilstm_summary.csv`):
 
-**Performance (Dev Set):**
+| Tokenizer | Vocab | Params | Dev MCC | Dev accuracy | Dev F1 | Dev ROC-AUC | Best epoch |
+|---|---|---|---|---|---|---|---|
+| char | 6 | 199,553 | **0.858** | **0.929** | **0.929** | **0.980** | 19 |
+| BPE-512 | 512 | 231,937 | 0.777 | 0.888 | 0.891 | 0.957 | 5 |
+| 6-mer | 4,098 | 461,441 | 0.758 | 0.876 | 0.883 | 0.947 | 4 |
+| BPE-4096 | 4,096 | 461,313 | 0.753 | 0.876 | 0.875 | 0.947 | 6 |
 
-| Tokenizer | Vocab | Params | MCC | Accuracy | F1 | ROC-AUC | Best epoch | Train time |
-|---|---|---|---|---|---|---|---|---|
-| char | 6 | 199,553 | **0.858** | **0.929** | **0.929** | **0.980** | 19 | 3.6 h* |
-| BPE-512 | 512 | 231,937 | 0.777 | 0.888 | 0.891 | 0.957 | 5 | 15 min |
-| 6-mer | 4,098 | 461,441 | 0.758 | 0.876 | 0.883 | 0.947 | 4 | 50 min |
-| BPE-4096 | 4,096 | 461,313 | 0.753 | 0.876 | 0.875 | 0.947 | 6 | 15 min |
-
-\*One epoch of the char run took 7,409 s, so the wall-clock total is inflated; the later epochs in the log took about 4–5 min each.
-
-**Performance (Test Set):**
+Test results (`results/bilstm_<tokenizer>_test_results.json`):
 
 | Tokenizer | MCC | Accuracy | F1 | ROC-AUC | Confusion matrix (TN, FP / FN, TP) |
 |---|---|---|---|---|---|
@@ -124,344 +104,105 @@ Compare machine learning approaches to identify which tokenization strategy and 
 | 6-mer | 0.736 | 0.865 | 0.874 | 0.936 | 2339, 601 / 199, 2781 |
 | BPE-4096 | 0.717 | 0.858 | 0.860 | 0.938 | 2515, 425 / 413, 2567 |
 
-- Dev numbers are optimistic: dev loss was used for early stopping and tokenizer selection.
-- The char model is the strongest on both dev and test, with a 0.08 MCC lead over the next model.
+- The char model is best on both dev and test. Training time is large (the char run took about 3.6 h wall-clock, inflated by one slow epoch, against 15 min to 50 min for the others).
+- Every run recorded in this folder uses the same settings (1 layer, embedding 64, hidden 128, lr 1e-3, dropout 0.3). No tuning sweep is recorded here; the tuning results for this model are in `../Alejandro/Tuning_and_test_findings.md`. Each setting was run once, with no repeated seeds.
 
----
+**Files:** `bilstm_train.py`, `bilstm_model.py`.
 
-### 3. DNABERT-2 with Frozen Embeddings (✅ Implemented)
+### 3. DNABERT-2, Frozen Embeddings (✅)
 
-**Architecture:**
-- Pre-trained DNABERT-2 (117M parameters, `zhihan1996/DNABERT-2-117M`) with frozen weights
-- Each sequence is embedded once; mean pooling over tokens gives a 768-dim vector (mean beat [CLS] on dev: 0.802 vs 0.762 MCC)
-- Standardized logistic regression head (C = 0.001) trained on the cached embeddings
-- Embeddings cached in `results/dnabert2_embeddings_{train,dev,test}.npz`
+- **Model:** `zhihan1996/DNABERT-2-117M`, weights frozen. Each sequence is embedded once; mean pooling over tokens gives a 768-dimensional vector. Mean pooling beat [CLS] on dev (0.802 vs 0.762 MCC).
+- **Head:** standardized logistic regression, C = 0.001, trained on the cached embeddings.
+- **Dev MCC:** 0.802. **Test:** MCC 0.7834, accuracy 0.8917, F1 0.8928, ROC-AUC 0.9510.
+- **Confusion matrix (test):** TN 2609, FP 331, FN 310, TP 2670.
+- Embedding all splits took about 692 s on this machine.
 
-**Files:**
-- Training: `dnabert2_frozen_train.py`
-- Model: `dnabert2_frozen_model.py`
-- Head: `results/dnabert2_frozen_head.pkl`
-- Results: `results/dnabert2_frozen_test_results.json`, `results/dnabert2_frozen_dev_results.csv`
+**Files:** `dnabert2_frozen_train.py`, `dnabert2_frozen_model.py`, `results/dnabert2_frozen_head.pkl`.
 
-**Performance (Test Set):**
-- MCC: 0.78, Accuracy: 0.89, F1: 0.89, ROC-AUC: 0.95
-- Confusion matrix (TN, FP / FN, TP): 2609, 331 / 310, 2670
-- Dev MCC for the selected config: 0.80
-- Embedding time for all splits: ~12 min (692 s)
+### 4. DNABERT-2, Full Fine-tuning (🔄 stub)
 
----
-
-### 4. DNABERT-2 with Full Fine-tuning (🔄 Placeholder)
-
-**⚠️ Requires GPU: 12GB+ VRAM (ideally 24GB+)**
-
-**Planned Architecture:**
-- Pre-trained DNABERT-2 (117M parameters)
-- All parameters trainable
-- Learning rate scheduling with warmup
-- Early stopping on validation loss
-
-**Files:**
-- Training skeleton: `dnabert2_finetuned_train.py`
-- Model skeleton: `dnabert2_finetuned_model.py`
-
-**Expected Performance:**
-- MCC: ~0.90-0.92
-- Training: 2-8 hours on GPU
-- Inference: 100-500ms per sequence
-
-**Implementation:** 4-8 hours dev + 2-8 hours training
-
----
+- `dnabert2_finetuned_model.py` and `dnabert2_finetuned_train.py` are stubs. Their methods raise `NotImplementedError`.
+- Not in the app. The app registers a placeholder under this name.
+- Needs a GPU with 12 GB+ VRAM for practical training times. The training loop is not written here.
 
 ## Streamlit Application
 
-### Features
+Run `streamlit run app.py` from `Code/Dan`. See [STREAMLIT_README.md](STREAMLIT_README.md) for usage.
 
-**🔄 Multi-Model Support**
-- **Logistic Regression** ✅ (fully implemented, ready to use)
-- **BiLSTM with Learned Embeddings** 🔄 (placeholder, under development)
-- **DNABERT-2 (Frozen Embeddings)** 🔄 (placeholder, under development)
-- **DNABERT-2 (Fine-tuned)** 🔄 (placeholder, under development)
+- **Sidebar:** choose one of seven models: logistic regression; BiLSTM with char, 6-mer, BPE-512 and BPE-4096 tokens; DNABERT-2 frozen; DNABERT-2 fine-tuned (placeholder).
+- **Single Sequence tab:** paste a sequence and get a prediction and probability, plus model-specific explanations.
+- **Batch Prediction tab:** upload a CSV with a `sequence` column and download predictions.
+- **About tab:** model descriptions and status.
 
-Select any model from the sidebar dropdown to use it for predictions.
+Explanations by model:
 
-**Model Selection**
-- Dropdown to choose active model
-- Status indicators (✅ implemented / 🔄 placeholder)
-- Test set metrics (for trained models)
-- Implementation status display
-
-**Single Sequence Prediction**
-1. Paste a DNA sequence (300 bp recommended)
-2. Press Tab or click elsewhere to update the preview
-3. Click "Predict" to get results
-4. Get instant results with confidence scores
-5. **For Logistic Regression:** See the top k-mers that influenced the prediction
-
-**Batch Prediction**
-1. Upload a CSV file with a "sequence" column
-2. Click "Predict All"
-3. Get results for all sequences
-4. Download predictions as CSV
-
-**About Tab**
-- Detailed descriptions of all models
-- Implementation status and rationale
-- Expected performance metrics
-- How k-mer features work
-
-### How It Works
-
-**Logistic Regression (Implemented)**
-
-*Feature Engineering:*
-- DNA sequences are converted to overlapping k-mers (windows of length k)
-- Each k-mer is weighted using TF-IDF (Term Frequency-Inverse Document Frequency)
-- Rare k-mers get higher weight, common k-mers are down-weighted
-
-*Model:*
-- Logistic regression learns which k-mers are indicative of promoters
-- Produces a probability score between 0 and 1
-
-*Interpretability:*
-- For each prediction, we calculate the contribution of each k-mer:
-  ```
-  Contribution = TF-IDF weight × Logistic regression coefficient
-  ```
-- Top contributing k-mers are displayed, sorted by impact
-- Users can validate predictions by examining the biological meaning of key k-mers
-
-**Placeholder Models**
-
-Models under development currently return random predictions seeded by the input sequence. This allows:
-- Testing UI/UX before implementation
-- Demonstrating the model selection interface
-- Placeholder results for screenshots and demos
-
-Once a model is fully implemented, simply replace the placeholder class with the actual implementation—no UI changes needed!
-
-### Interpreting Results
-
-**Prediction**
-- **✅ PROMOTER:** Model predicts this is a promoter region (probability > 0.5)
-- **❌ NOT PROMOTER:** Model predicts this is not a promoter (probability ≤ 0.5)
-
-**Confidence**
-- Shown as a percentage (0-100%)
-- Higher = more certain about the prediction
-- For promoter predictions: confidence = model probability
-- For non-promoter predictions: confidence = 1 - model probability
-
-**K-mers (Logistic Regression only)**
-- **kmer:** The 3-7 letter DNA sequence found in your input
-  - Format: "ATG[3]", "ATGA[4]", etc. showing k-mer size
-- **tfidf:** How rare/common this k-mer is (0-1 scale)
-  - Close to 0: common k-mer (appears in many sequences)
-  - Close to 1: rare k-mer (appears in few sequences)
-- **coef:** The model's learned weight for this k-mer
-  - Positive: indicates promoter
-  - Negative: indicates non-promoter
-  - Larger magnitude: stronger signal
-- **contribution:** tfidf × coef = actual impact on this prediction
-  - Positive: helps predict promoter
-  - Negative: helps predict non-promoter
-
-**Base importance (BiLSTM only)**
-- Each base is replaced in turn with each of the other three bases, and the change in the promoter logit is recorded
-- A base's importance is the average change across its three alternatives
-- Positive: the base pushes the prediction toward PROMOTER; negative: toward NOT PROMOTER
-- Units are logits; the chart shows one bar per position, and the table lists the 15 largest
-- Scores single-base effects, so a motif spread across several bases appears as several moderate bars
-- Only the first 512 bases are scanned
-
----
+| Model | Explanation shown |
+|---|---|
+| Logistic regression | Top k-mers, each with TF-IDF value, coefficient and contribution |
+| BiLSTM (all tokenizers) | In-silico mutagenesis: each base is replaced by the other three and the change in logit is recorded. Only the first 512 bases are scanned. |
+| DNABERT-2 frozen | Token occlusion (default) or gradient-based attribution. Token scores are spread back to bases. |
 
 ## Architecture
 
-### Model Abstraction
+- **`model_utils.py`:** the abstract `PromoterModel` base class, `ModelRegistry`, and placeholder classes (`Dummy*`) used when a checkpoint is missing or fails to load.
+- **Model classes:** `logistic_regression_model.py`, `bilstm_model.py`, `dnabert2_frozen_model.py`, plus the stub `dnabert2_finetuned_model.py`.
+- **`app.py`:** `initialize_models()` builds the registry. Each model is registered once, under its label, and the app adapts its explanation panel to what the model supports.
 
-All models implement `PromoterModel` abstract base class with:
-- `predict(sequence)` - Single sequence prediction
-- `batch_predict(sequences)` - Multiple sequences
-- `predict_with_features(sequence, top_n)` - With feature importance (if supported)
-
-### Model Registry
-
-`ModelRegistry` manages available models dynamically.
-
-### Feature Importance (Logistic Regression)
-
-Contribution = TF-IDF Weight × Logistic Regression Coefficient
-
-**Example:**
-- K-mer: "ATG", TF-IDF: 0.12, Coefficient: +0.85
-- Contribution: +0.10 (supports promoter)
-
-### Feature Importance (BiLSTM)
-
-In-silico mutagenesis, implemented as `BiLSTMModel.explain()` in `bilstm_model.py`:
-
-```
-importance(i) = mean over b ≠ seq[i] of [ logit(seq) − logit(seq with base i replaced by b) ]
-```
-
-- Every mutant is scored in a single batch, so one sequence needs about 3 × L forward passes (about 2 s for 300 bp)
-- Mutations are applied to the DNA, not to tokens, so the same code works for all four tokenizers
-- Integrated Gradients was tried first and dropped: the model's logit changes too sharply near the zero-embedding baseline for the path integral to converge, even in float64 with up to 1,000 steps (gradients were checked against finite differences and were correct)
-
----
+To add a model: train it in `<name>_train.py`, implement a `PromoterModel` subclass in `<name>_model.py`, and register it in `initialize_models()` in `app.py`.
 
 ## Project Structure
 
 ```
 Dan/
-├── Training Scripts (one per model)
-│   ├── logistic_regression_train.py      # ✅ Fully implemented
-│   ├── bilstm_train.py                   # 🔄 Skeleton (TODO)
-│   ├── dnabert2_frozen_train.py          # 🔄 Skeleton (TODO)
-│   └── dnabert2_finetuned_train.py       # 🔄 Skeleton (TODO)
-│
-├── Model Classes (one per model)
-│   ├── logistic_regression_model.py      # ✅ Fully implemented
-│   ├── bilstm_model.py                   # 🔄 Skeleton (TODO)
-│   ├── dnabert2_frozen_model.py          # 🔄 Skeleton (TODO)
-│   └── dnabert2_finetuned_model.py       # 🔄 Skeleton (TODO)
-│
-├── Core Application
-│   ├── app.py                            # Streamlit frontend
-│   ├── model_utils.py                    # Model abstraction & registry
-│   ├── requirements.txt                  # Dependencies
-│   └── README.md                         # This file
-│
-└── results/                              # Training outputs
-    ├── logistic_regression_model.pkl
-    ├── logistic_regression_test_results.json
-    └── logistic_regression_dev_results.csv
+├── Training scripts
+│   ├── eda.py                              # EDA plots -> eda_plots/
+│   ├── logistic_regression_train.py        # ✅
+│   ├── bilstm_train.py                     # ✅ (--tokenizer, --test)
+│   ├── dnabert2_frozen_train.py            # ✅
+│   └── dnabert2_finetuned_train.py         # 🔄 stub
+├── Model classes
+│   ├── logistic_regression_model.py        # ✅
+│   ├── bilstm_model.py                     # ✅
+│   ├── dnabert2_frozen_model.py            # ✅
+│   └── dnabert2_finetuned_model.py         # 🔄 stub
+├── App and shared code
+│   ├── app.py                              # Streamlit frontend
+│   ├── model_utils.py                      # base class, registry, placeholders
+│   ├── test_model_utils.py                 # tests for model_utils
+│   ├── dnabert-test.py                     # quick check that DNABERT-2 loads
+│   └── requirements.txt
+├── results/                                # trained models and metrics (see results/README.md)
+├── eda_plots/                              # EDA figures (see eda_plots/README.md)
+└── Documentation (.md files, see README-linked.md)
 ```
 
----
+## Status and Remaining Work
 
-## Implementation Roadmap
+Done: logistic regression, BiLSTM across four tokenizers, frozen DNABERT-2, the app with explanations, and test-set scoring for each final model.
 
-Every model has TWO files: `{model_name}_train.py` (training) + `{model_name}_model.py` (class)
+Open:
+1. Implement `dnabert2_finetuned_train.py` and `dnabert2_finetuned_model.py`, or decide that the fine-tuned model is reported only from Alejandro's run.
+2. Decide which run set (this folder or `../Alejandro/`) the final report uses, and align the app's checkpoints with it.
+3. Decide whether to add Integrated Gradients (proposal item). Dan's app currently uses occlusion and mutagenesis instead.
 
-**Phase 1: BiLSTM** (Start here - medium difficulty)
-- Implement BPE tokenizer in `bilstm_train.py`
-- Create PyTorch BiLSTM model
-- Implement training loop
-- Effort: 4-8 hours dev + 1-2 hours training
-
-**Phase 2: DNABERT-2 Frozen** (Easier)
-- Load DNABERT-2 from Hugging Face
-- Extract [CLS] embeddings
-- Train LR head
-- Effort: 2-4 hours dev + 30-60 min training
-
-**Phase 3: DNABERT-2 Fine-tuned** (Hardest, best performance)
-- Load DNABERT-2 with trainable parameters
-- Implement full training loop
-- Effort: 4-8 hours dev + 2-8 hours training
-
----
-
-## Adding New Models
-
-1. Train the model in `{model_name}_train.py`
-2. Create model class in `{model_name}_model.py` inheriting from `PromoterModel`
-3. Register in `app.py`'s `initialize_models()` function
-4. Done! Model appears in dropdown
-
----
+See [MODELS_IMPLEMENTATION_TODO.md](MODELS_IMPLEMENTATION_TODO.md) for detail.
 
 ## Dependencies
 
-**Core (in requirements.txt):**
-```
-streamlit==1.39.0
-pandas, numpy, scikit-learn, scipy
-```
-
-**For BiLSTM:**
-```
-torch>=2.0.0
-tokenizers>=0.13.0
-```
-
-**For DNABERT-2:**
-```
-transformers>=4.40.0
-torch>=2.0.0
-```
-
-**Optional:**
-```
-captum>=0.7.0          # Integrated Gradients
-accelerate>=0.27.0     # Distributed training
-```
-
----
+`requirements.txt` pins the packages, including `torch`, `transformers`, `tokenizers`, `scikit-learn`, `pandas` and `streamlit`. The DNABERT-2 model is downloaded from Hugging Face on first use and cached.
 
 ## Troubleshooting
 
-**ModuleNotFoundError when running app**
-```bash
-# Make sure you're in the virtual environment
-source ENV/bin/activate
-streamlit run app.py
-```
+**"No models available" or logistic regression shows a placeholder.** Run `python logistic_regression_train.py` first, then reload the app.
 
-**"Model not found" error in Streamlit**
-The trained model hasn't been created yet:
-```bash
-# First, train the model
-python logistic_regression_train.py
+**BiLSTM or DNABERT-2 shows a placeholder.** The app shows a "Could not load ..." warning naming the failed model. Check that `results/bilstm_<tokenizer>.pt` and `results/dnabert2_frozen_head.pkl` exist.
 
-# Then run the app
-streamlit run app.py
-```
+**DNABERT-2 downloads slowly or fails.** The first run downloads `zhihan1996/DNABERT-2-117M` through Hugging Face. Check the network and cache.
 
-**"No models available" error**
-- Run `logistic_regression_train.py` first
-
-**Logistic Regression shows as placeholder**
-- Normal while model is training
-- Reload Streamlit app once trained
-
-**Slow predictions on first run**
-- Normal! Streamlit caches the model on first load
-- Subsequent predictions will be instant
-
-**Out of memory (DNABERT-2)**
-- Reduce batch size, enable gradient accumulation
-- Use mixed precision training
-
-**Different predictions from each model**
-- Expected! Compare test set performance metrics
-
----
+**Out of memory (DNABERT-2).** Reduce `--batch` in `dnabert2_frozen_train.py`, or run on a machine with more memory.
 
 ## References
 
-- **DNABERT-2:** https://arxiv.org/abs/2306.15020
-- **Streamlit:** https://docs.streamlit.io
-- **PyTorch:** https://pytorch.org
-
----
-
-## Next Steps
-
-1. **Start with BiLSTM**
-   - Open `bilstm_train.py` - contains clear TODO sections
-   - Follow guidance in code comments
-   - Test each function independently
-
-2. **Run the app**
-   - `streamlit run app.py`
-   - All models appear in dropdown
-   - Logistic Regression shows real results if trained
-
-3. **Build remaining models**
-   - Follow the same pattern for each
-
-Good luck! 🎯
+- DNABERT-2: Zhou et al., ICLR 2024, https://arxiv.org/abs/2306.15020
+- Streamlit: https://docs.streamlit.io
+- PyTorch: https://pytorch.org
