@@ -1,0 +1,65 @@
+{'train': 47356, 'dev': 5920, 'test': 5920} device: mps
+Loading zhihan1996/DNABERT-2-117M ...
+W1115 16:04:16.545000 39707 site-packages/torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+/Users/kerchner/.cache/huggingface/modules/transformers_modules/zhihan1996/DNABERT_hyphen_2_hyphen_117M/7bce263b15377fc15361f52cfab88f8b586abda0/bert_layers.py:126: UserWarning: Unable to import Triton; defaulting MosaicBERT attention implementation to pytorch (this will reduce throughput when using this model).
+  warnings.warn(
+Embedding train (47,356 sequences)...
+    32/47356
+    1632/47356
+    3232/47356
+    4832/47356
+    6432/47356
+    8032/47356
+    9632/47356
+    11232/47356
+    12832/47356
+    14432/47356
+    16032/47356
+    17632/47356
+    19232/47356
+    20832/47356
+    22432/47356
+    24032/47356
+    25632/47356
+    27232/47356
+    28832/47356
+    30432/47356
+    32032/47356
+    33632/47356
+    35232/47356
+    36832/47356
+    38432/47356
+    40032/47356
+    41632/47356
+    43232/47356
+    44832/47356
+    46432/47356
+Embedding dev (5,920 sequences)...
+    32/5920
+    1632/5920
+    3232/5920
+    4832/5920
+Embedding test (5,920 sequences)...
+    32/5920
+    1632/5920
+    3232/5920
+    4832/5920
+Embedding time this run: 692s
+  cls  C=0.001  dev MCC 0.7617  acc 0.8807  AUC 0.9437
+  cls  C=0.01   dev MCC 0.7626  acc 0.8812  AUC 0.9460
+  cls  C=0.1    dev MCC 0.7589  acc 0.8794  AUC 0.9454
+  cls  C=1.0    dev MCC 0.7592  acc 0.8796  AUC 0.9452
+  mean C=0.001  dev MCC 0.8024  acc 0.9012  AUC 0.9583
+  mean C=0.01   dev MCC 0.8024  acc 0.9012  AUC 0.9602
+  mean C=0.1    dev MCC 0.7980  acc 0.8990  AUC 0.9600
+  mean C=1.0    dev MCC 0.7980  acc 0.8990  AUC 0.9599
+Selected on dev: pooling=mean, C=0.001 (dev MCC 0.8024)
+
+=== Test set ===
+  MCC: 0.7834
+  ACCURACY: 0.8917
+  F1: 0.8928
+  ROC_AUC: 0.9510
+  TN=2609 FP=331 FN=310 TP=2670
+Saved head and results to results/

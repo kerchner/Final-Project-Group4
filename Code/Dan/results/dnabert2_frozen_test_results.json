@@ -1,0 +1,28 @@
+{
+  "model": "DNABERT-2 (Frozen Embeddings)",
+  "hyperparameters": {
+    "pretrained_model": "zhihan1996/DNABERT-2-117M",
+    "pooling": "mean",
+    "lr_c": 0.001,
+    "embedding_dim": 768,
+    "head_params": 769
+  },
+  "dev_mcc": 0.8024275901518739,
+  "embedding_seconds_this_run": 691.826954126358,
+  "test_metrics": {
+    "mcc": 0.7834453973337691,
+    "accuracy": 0.891722972972973,
+    "f1": 0.8928272864069554,
+    "roc_auc": 0.9509696160343333,
+    "confusion_matrix": [
+      [
+        2609,
+        331
+      ],
+      [
+        310,
+        2670
+      ]
+    ]
+  }
+}

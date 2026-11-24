@@ -1,0 +1,11 @@
+[bilstm_kmer] vocab 4098, train tokens (47356, 295), ~295 tokens/seq, device mps
+  epoch  1  train 0.5464  val 0.4734  val MCC 0.6290  (221s)
+  epoch  2  train 0.3762  val 0.4097  val MCC 0.6809  (1445s)
+  epoch  3  train 0.3340  val 0.4155  val MCC 0.6868  (224s)
+  epoch  4  train 0.3126  val 0.3248  val MCC 0.7580  (220s)
+  epoch  5  train 0.2978  val 0.3449  val MCC 0.7523  (223s)
+  epoch  6  train 0.2844  val 0.3542  val MCC 0.7390  (230s)
+  epoch  7  train 0.2610  val 0.4477  val MCC 0.6792  (228s)
+  epoch  8  train 0.2553  val 0.4072  val MCC 0.7044  (224s)
+  early stopping
+[bilstm_kmer] DEV  MCC 0.7580  acc 0.8757  F1 0.8828  AUC 0.9472  best epoch 4  3015s  461,441 params

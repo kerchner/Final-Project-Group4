@@ -1,315 +1,199 @@
 #!/usr/bin/env python3
 """
-Training script for BiLSTM model with learned embeddings.
+Train BiLSTM promoter classifiers across tokenizers (char, 6-mer, BPE-512, BPE-4096).
 
-This script:
-1. Loads DNA sequences from ../data/prom_300_all/
-2. Builds a BPE tokenizer from training data
-3. Creates a PyTorch BiLSTM model
-4. Trains with validation and early stopping
-5. Evaluates on test set
-6. Saves trained model checkpoint
+Hyperparameters are tuned on the dev split only; the test set is scored once per
+final model, via --test, which does no training.
 
-Run with:
-    python bilstm_train.py
+Examples (run from Code/Dan):
+    pixi run python bilstm_train.py --tokenizer bpe512            # train, report dev metrics
+    pixi run python bilstm_train.py --tokenizer all               # all four tokenizers
+    pixi run python bilstm_train.py --tokenizer char --lr 5e-4 --tag lr5e-4
+    pixi run python bilstm_train.py --tokenizer char --test       # final: score test set once
+    pixi run python bilstm_train.py --quick                       # smoke test on a tiny subset
 
-Output files:
-    results/bilstm_tokenizer.pkl - Trained BPE tokenizer
-    results/bilstm_model.pt - Best model checkpoint
-    results/bilstm_test_results.json - Test set metrics
+Outputs (results/), with <name> = bilstm_<tokenizer>[_<tag>]:
+    <name>.pt                 best checkpoint (weights + tokenizer + config), loaded by the app
+    <name>_dev_results.json   dev metrics, history, params, training time
+    <name>_test_results.json  test metrics (only with --test)
+    bilstm_summary.csv        one row per run, for comparing tokenizers
 """
 
+import argparse
 import json
-import pickle
+import time
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import (
-    accuracy_score,
-    confusion_matrix,
-    f1_score,
-    matthews_corrcoef,
-    roc_auc_score,
-)
+import torch
+from sklearn.metrics import (accuracy_score, confusion_matrix, f1_score,
+                             matthews_corrcoef, roc_auc_score)
+from torch import nn
 
-# TODO: Uncomment when implementing
-# import torch
-# import torch.nn as nn
-# from torch.utils.data import DataLoader, TensorDataset
-# from tokenizers import Tokenizer
-# from tokenizers.models import BPE
-# from tokenizers.trainers import BpeTrainer
+from bilstm_model import (TOKENIZER_CHOICES, BiLSTM, BiLSTMModel, DNATokenizer,
+                          get_device)
 
-
-# ── Hyperparameters ────────────────────────────────────────────────────────
-
-EMBEDDING_DIM = 128
-HIDDEN_DIM = 256
-NUM_LAYERS = 2
-VOCAB_SIZE = 512  # BPE vocabulary size (can try 512 or 4,096)
-DROPOUT = 0.5
-BATCH_SIZE = 32
-LEARNING_RATE = 0.001
-EPOCHS = 10
-EARLY_STOPPING_PATIENCE = 3
+DATA_DIR = Path("../data/prom_300_all")
+RESULTS_DIR = Path("results")
 SEED = 42
 
-DATA_DIR = "../data/prom_300_all"
-RESULTS_DIR = "results"
-
-
-# ── Data Loading ────────────────────────────────────────────────────────────
 
 def load_split(name: str) -> tuple[list[str], np.ndarray]:
-    """Load sequences and labels for train/dev/test split."""
-    df = pd.read_csv(f"{DATA_DIR}/{name}.csv")
-    sequences = df["sequence"].tolist()
-    labels = df["label"].to_numpy()
-    return sequences, labels
+    df = pd.read_csv(DATA_DIR / f"{name}.csv")
+    return df["sequence"].tolist(), df["label"].to_numpy()
 
 
-# ── Tokenizer ────────────────────────────────────────────────────────────────
-
-def build_tokenizer(sequences: list[str], vocab_size: int = 512) -> 'Tokenizer':
-    """
-    Build BPE tokenizer from training sequences.
-
-    TODO: Implement using tokenizers library:
-    1. Create BPE model
-    2. Create BpeTrainer with vocab_size
-    3. Train on sequences
-    4. Add special tokens [CLS], [PAD], [UNK]
-    5. Return trained tokenizer
-    """
-    raise NotImplementedError("Tokenizer training not yet implemented")
+def batches(ids: np.ndarray, y: np.ndarray, batch_size: int, device: str, shuffle: bool):
+    order = np.random.permutation(len(y)) if shuffle else np.arange(len(y))
+    for i in range(0, len(order), batch_size):
+        idx = order[i:i + batch_size]
+        yield (torch.from_numpy(ids[idx]).to(device),
+               torch.from_numpy(y[idx]).float().to(device))
 
 
-def tokenize_sequences(sequences: list[str], tokenizer: 'Tokenizer', max_length: int = 512) -> np.ndarray:
-    """
-    Tokenize sequences and pad/truncate to max_length.
-
-    TODO: Implement:
-    1. Encode each sequence with tokenizer
-    2. Pad short sequences with [PAD] token
-    3. Truncate long sequences
-    4. Return tensor of shape (n_sequences, max_length)
-    """
-    raise NotImplementedError("Tokenization not yet implemented")
-
-
-# ── Model Architecture ──────────────────────────────────────────────────────
-
-class BiLSTM(nn.Module):
-    """
-    BiLSTM model for sequence classification.
-
-    Architecture:
-    - Embedding layer: vocab_size -> embedding_dim
-    - BiLSTM layers: embedding_dim -> hidden_dim, bidirectional
-    - Dropout for regularization
-    - Dense output: (hidden_dim * 2) -> 1 with sigmoid
-
-    TODO: Implement __init__ and forward methods
-    """
-
-    def __init__(self, vocab_size: int, embedding_dim: int, hidden_dim: int,
-                 num_layers: int = 2, dropout: float = 0.5):
-        """
-        TODO: Initialize layers
-        - self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        - self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers,
-                              bidirectional=True, dropout=dropout)
-        - self.dense = nn.Linear(hidden_dim * 2, 1)
-        - self.sigmoid = nn.Sigmoid()
-        """
-        raise NotImplementedError("Model initialization not yet implemented")
-
-    def forward(self, input_ids: 'torch.Tensor') -> 'torch.Tensor':
-        """
-        TODO: Implement forward pass
-        1. Embedding: input_ids -> embedded (batch_size, seq_len, embedding_dim)
-        2. BiLSTM: embedded -> lstm_output, (h_n, c_n)
-        3. Get last hidden state from both directions
-        4. Concatenate forward and backward: (batch_size, hidden_dim * 2)
-        5. Dense layer: -> (batch_size, 1)
-        6. Sigmoid: -> probabilities in [0, 1]
-        """
-        raise NotImplementedError("Forward pass not yet implemented")
+def run_epoch(model, ids, y, batch_size, device, optimizer=None, clip=1.0):
+    """One pass; trains if optimizer given. Returns (mean loss, probabilities)."""
+    training = optimizer is not None
+    model.train(training)
+    loss_fn = nn.BCEWithLogitsLoss()
+    total, probs = 0.0, []
+    for xb, yb in batches(ids, y, batch_size, device, shuffle=training):
+        with torch.set_grad_enabled(training):
+            logits = model(xb)
+            loss = loss_fn(logits, yb)
+        if training:
+            optimizer.zero_grad()
+            loss.backward()
+            nn.utils.clip_grad_norm_(model.parameters(), clip)
+            optimizer.step()
+        total += loss.item() * len(yb)
+        probs.append(torch.sigmoid(logits).detach().cpu())
+    return total / len(y), torch.cat(probs).numpy()
 
 
-# ── Training ────────────────────────────────────────────────────────────────
-
-def train_model(model: BiLSTM, train_loader: 'DataLoader', val_loader: 'DataLoader',
-                optimizer: 'torch.optim.Optimizer', criterion: 'nn.Module',
-                epochs: int, device: str, early_stopping_patience: int) -> dict:
-    """
-    Train BiLSTM model with validation and early stopping.
-
-    TODO: Implement training loop:
-    1. For each epoch:
-       a. Forward pass on training batch
-       b. Compute loss
-       c. Backward pass
-       d. Optimizer step
-       e. Track training loss/metrics
-    2. Validate on dev set each epoch
-    3. Save best model based on validation loss
-    4. Early stopping if val loss doesn't improve
-    5. Return training history with train/val metrics
-
-    Args:
-        model: BiLSTM model instance
-        train_loader: Training data loader
-        val_loader: Validation data loader
-        optimizer: Adam optimizer
-        criterion: Binary cross-entropy loss
-        epochs: Number of epochs to train
-        device: 'cpu' or 'cuda'
-        early_stopping_patience: Epochs without improvement before stopping
-
-    Returns:
-        Dictionary with training history
-    """
-    raise NotImplementedError("Training loop not yet implemented")
+def compute_metrics(y_true, probs) -> dict:
+    pred = (probs >= 0.5).astype(int)
+    return {
+        "mcc": float(matthews_corrcoef(y_true, pred)),
+        "accuracy": float(accuracy_score(y_true, pred)),
+        "f1": float(f1_score(y_true, pred)),
+        "roc_auc": float(roc_auc_score(y_true, probs)),
+        "confusion_matrix": confusion_matrix(y_true, pred).tolist(),
+    }
 
 
-def evaluate_model(model: BiLSTM, data_loader: 'DataLoader', device: str) -> dict:
-    """
-    Evaluate model on a dataset.
-
-    TODO: Implement evaluation:
-    1. Set model to eval mode
-    2. Forward pass (no gradient computation)
-    3. Collect predictions and probabilities
-    4. Compute metrics: accuracy, F1, MCC, ROC-AUC
-    5. Compute confusion matrix
-    6. Return metrics dictionary
-    """
-    raise NotImplementedError("Evaluation not yet implemented")
+def append_summary(row: dict):
+    path = RESULTS_DIR / "bilstm_summary.csv"
+    df = pd.DataFrame([row])
+    if path.exists():
+        df = pd.concat([pd.read_csv(path), df], ignore_index=True)
+    df.to_csv(path, index=False)
 
 
-# ── Main ────────────────────────────────────────────────────────────────────
-
-def main():
-    """Main training pipeline."""
-    print("=" * 65)
-    print("BiLSTM Model Training")
-    print("=" * 65)
-
-    # Set random seeds
+def run(args, kind: str):
+    torch.manual_seed(SEED)
     np.random.seed(SEED)
-    # TODO: torch.manual_seed(SEED)
+    device = get_device()
+    name = f"bilstm_{kind}" + (f"_{args.tag}" if args.tag else "") + ("_quick" if args.quick else "")
+    ckpt_path = RESULTS_DIR / f"{name}.pt"
 
-    # Create results directory
-    Path(RESULTS_DIR).mkdir(exist_ok=True)
-
-    # ── Load Data ───────────────────────────────────────────────────────────
-    print("\nLoading data...")
     train_seqs, y_train = load_split("train")
     val_seqs, y_val = load_split("dev")
     test_seqs, y_test = load_split("test")
+    if args.quick:
+        train_seqs, y_train = train_seqs[:2000], y_train[:2000]
+        val_seqs, y_val = val_seqs[:500], y_val[:500]
+        test_seqs, y_test = test_seqs[:500], y_test[:500]
 
-    print(f"  Train: {len(y_train):,}  Val: {len(y_val):,}  Test: {len(y_test):,}")
-    print(f"  Class balance (train): {y_train.mean():.3f} positive")
+    # ── Final test-set scoring: no training ────────────────────────────────
+    if args.test:
+        bm = BiLSTMModel(str(ckpt_path), device=device)
+        probs = bm._probs(test_seqs)
+        metrics = compute_metrics(y_test, probs)
+        dev_info = json.loads((RESULTS_DIR / f"{name}_dev_results.json").read_text())
+        out = {"model": name, "tokenizer": kind, "config": bm.config,
+               "n_params": dev_info["n_params"], "train_seconds": dev_info["train_seconds"],
+               "best_epoch": dev_info["best_epoch"], "test_metrics": metrics}
+        (RESULTS_DIR / f"{name}_test_results.json").write_text(json.dumps(out, indent=2))
+        append_summary({"model": name, "split": "test", **{k: metrics[k] for k in
+                        ("mcc", "accuracy", "f1", "roc_auc")},
+                        "train_seconds": dev_info["train_seconds"], "n_params": dev_info["n_params"]})
+        print(f"[{name}] TEST  MCC {metrics['mcc']:.4f}  acc {metrics['accuracy']:.4f}  "
+              f"F1 {metrics['f1']:.4f}  AUC {metrics['roc_auc']:.4f}")
+        return
 
-    # ── Build Tokenizer ────────────────────────────────────────────────────
-    print("\nBuilding BPE tokenizer...")
-    tokenizer = build_tokenizer(train_seqs, vocab_size=VOCAB_SIZE)
-    print(f"  Vocabulary size: {VOCAB_SIZE}")
+    # ── Tokenizer (fit on train only) and tokenization ─────────────────────
+    tok = DNATokenizer.train(kind, train_seqs)
+    X_train, X_val = tok.encode_batch(train_seqs), tok.encode_batch(val_seqs)
+    print(f"[{name}] vocab {tok.vocab_size}, train tokens {X_train.shape}, "
+          f"~{(X_train != 0).sum(1).mean():.0f} tokens/seq, device {device}")
 
-    # Save tokenizer
-    with open(f"{RESULTS_DIR}/bilstm_tokenizer.pkl", "wb") as f:
-        pickle.dump(tokenizer, f)
-    print(f"  Tokenizer saved to {RESULTS_DIR}/bilstm_tokenizer.pkl")
+    config = {"embedding_dim": args.emb, "hidden_dim": args.hidden, "num_layers": args.layers,
+              "dropout": args.dropout, "lr": args.lr, "batch_size": args.batch}
+    model = BiLSTM(tok.vocab_size, args.emb, args.hidden, args.layers, args.dropout).to(device)
+    n_params = sum(p.numel() for p in model.parameters())
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=1)
 
-    # ── Tokenize Sequences ──────────────────────────────────────────────────
-    print("\nTokenizing sequences...")
-    train_tokens = tokenize_sequences(train_seqs, tokenizer)
-    val_tokens = tokenize_sequences(val_seqs, tokenizer)
-    test_tokens = tokenize_sequences(test_seqs, tokenizer)
+    wrapper = BiLSTMModel(device=device)
+    wrapper.model, wrapper.tokenizer, wrapper.config = model, tok, config
 
-    print(f"  Train tokens shape: {train_tokens.shape}")
-    print(f"  Val tokens shape: {val_tokens.shape}")
-    print(f"  Test tokens shape: {test_tokens.shape}")
+    history, best_loss, best_epoch, bad = [], float("inf"), 0, 0
+    start = time.time()
+    for epoch in range(1, args.epochs + 1):
+        t0 = time.time()
+        tr_loss, _ = run_epoch(model, X_train, y_train, args.batch, device, optimizer)
+        va_loss, va_probs = run_epoch(model, X_val, y_val, args.batch, device)
+        va_mcc = matthews_corrcoef(y_val, (va_probs >= 0.5).astype(int))
+        scheduler.step(va_loss)
+        history.append({"epoch": epoch, "train_loss": tr_loss, "val_loss": va_loss, "val_mcc": float(va_mcc)})
+        print(f"  epoch {epoch:2d}  train {tr_loss:.4f}  val {va_loss:.4f}  val MCC {va_mcc:.4f}  ({time.time()-t0:.0f}s)")
+        if va_loss < best_loss:
+            best_loss, best_epoch, bad = va_loss, epoch, 0
+            RESULTS_DIR.mkdir(exist_ok=True)
+            wrapper.save_model(str(ckpt_path), extra={"best_epoch": epoch})
+        else:
+            bad += 1
+            if bad >= args.patience:
+                print("  early stopping")
+                break
+    seconds = time.time() - start
 
-    # ── Create DataLoaders ──────────────────────────────────────────────────
-    print("\nCreating data loaders...")
-    # TODO: Create PyTorch DataLoaders
-    # train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    # val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
-    # test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    # Reload best-by-val-loss weights and report dev metrics
+    model.load_state_dict(torch.load(ckpt_path, map_location=device, weights_only=False)["state_dict"])
+    _, va_probs = run_epoch(model, X_val, y_val, args.batch, device)
+    metrics = compute_metrics(y_val, va_probs)
+    out = {"model": name, "tokenizer": kind, "config": config, "vocab_size": tok.vocab_size,
+           "n_params": n_params, "train_seconds": seconds, "best_epoch": best_epoch,
+           "history": history, "dev_metrics": metrics}
+    (RESULTS_DIR / f"{name}_dev_results.json").write_text(json.dumps(out, indent=2))
+    append_summary({"model": name, "split": "dev", **{k: metrics[k] for k in
+                    ("mcc", "accuracy", "f1", "roc_auc")},
+                    "train_seconds": round(seconds), "n_params": n_params})
+    print(f"[{name}] DEV  MCC {metrics['mcc']:.4f}  acc {metrics['accuracy']:.4f}  "
+          f"F1 {metrics['f1']:.4f}  AUC {metrics['roc_auc']:.4f}  "
+          f"best epoch {best_epoch}  {seconds:.0f}s  {n_params:,} params")
 
-    # ── Build Model ─────────────────────────────────────────────────────────
-    print("\nBuilding BiLSTM model...")
-    device = "cuda" if False else "cpu"  # TODO: torch.cuda.is_available()
-    print(f"  Device: {device}")
 
-    model = BiLSTM(
-        vocab_size=VOCAB_SIZE,
-        embedding_dim=EMBEDDING_DIM,
-        hidden_dim=HIDDEN_DIM,
-        num_layers=NUM_LAYERS,
-        dropout=DROPOUT
-    )
-    # model = model.to(device)
-
-    print(f"  Embedding dim: {EMBEDDING_DIM}")
-    print(f"  Hidden dim: {HIDDEN_DIM}")
-    print(f"  Num layers: {NUM_LAYERS}")
-
-    # ── Setup Training ──────────────────────────────────────────────────────
-    print("\nSetting up training...")
-    # TODO: optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    # TODO: criterion = nn.BCELoss()
-
-    # ── Train Model ─────────────────────────────────────────────────────────
-    print("\nTraining model...")
-    print(f"  Epochs: {EPOCHS}")
-    print(f"  Batch size: {BATCH_SIZE}")
-    print(f"  Learning rate: {LEARNING_RATE}")
-
-    # history = train_model(
-    #     model, train_loader, val_loader, optimizer, criterion,
-    #     epochs=EPOCHS, device=device, early_stopping_patience=EARLY_STOPPING_PATIENCE
-    # )
-
-    # ── Evaluate on Test Set ────────────────────────────────────────────────
-    print("\nEvaluating on test set...")
-    # test_metrics = evaluate_model(model, test_loader, device)
-
-    test_metrics = {
-        "accuracy": 0.0,  # TODO: Placeholder
-        "f1": 0.0,
-        "mcc": 0.0,
-        "roc_auc": 0.0,
-    }
-
-    print("\n=== Test Set Results ===")
-    for metric, value in test_metrics.items():
-        print(f"  {metric.upper()}: {value:.4f}")
-
-    # Save test results
-    final_results = {
-        "model": "BiLSTM",
-        "hyperparameters": {
-            "embedding_dim": EMBEDDING_DIM,
-            "hidden_dim": HIDDEN_DIM,
-            "num_layers": NUM_LAYERS,
-            "vocab_size": VOCAB_SIZE,
-            "dropout": DROPOUT,
-            "batch_size": BATCH_SIZE,
-            "learning_rate": LEARNING_RATE,
-        },
-        "test_metrics": test_metrics,
-    }
-
-    with open(f"{RESULTS_DIR}/bilstm_test_results.json", "w") as f:
-        json.dump(final_results, f, indent=2)
-
-    print(f"\nTest results saved to {RESULTS_DIR}/bilstm_test_results.json")
-    print(f"Model saved to {RESULTS_DIR}/bilstm_model.pt")
-    print("\n" + "=" * 65)
+def main():
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--tokenizer", default="bpe512", choices=TOKENIZER_CHOICES + ["all"])
+    p.add_argument("--emb", type=int, default=64)
+    p.add_argument("--hidden", type=int, default=128)
+    p.add_argument("--layers", type=int, default=1)
+    p.add_argument("--dropout", type=float, default=0.3)
+    p.add_argument("--lr", type=float, default=1e-3)
+    p.add_argument("--batch", type=int, default=128)
+    p.add_argument("--epochs", type=int, default=30)
+    p.add_argument("--patience", type=int, default=4, help="early stopping on dev loss")
+    p.add_argument("--tag", default="", help="name for this setting, so tuning runs don't overwrite")
+    p.add_argument("--quick", action="store_true", help="tiny subset smoke test")
+    p.add_argument("--test", action="store_true", help="no training; score saved model on test set")
+    args = p.parse_args()
+    RESULTS_DIR.mkdir(exist_ok=True)
+    for kind in (TOKENIZER_CHOICES if args.tokenizer == "all" else [args.tokenizer]):
+        run(args, kind)
 
 
 if __name__ == "__main__":

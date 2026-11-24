@@ -1,0 +1,27 @@
+[bilstm_char] vocab 6, train tokens (47356, 300), ~300 tokens/seq, device mps
+  epoch  1  train 0.4819  val 0.3018  val MCC 0.7518  (265s)
+  epoch  2  train 0.3166  val 0.2562  val MCC 0.8049  (360s)
+  epoch  3  train 0.2684  val 0.2246  val MCC 0.8289  (352s)
+  epoch  4  train 0.2520  val 0.2212  val MCC 0.8325  (248s)
+  epoch  5  train 0.2351  val 0.2108  val MCC 0.8328  (241s)
+  epoch  6  train 0.2236  val 0.2099  val MCC 0.8342  (211s)
+  epoch  7  train 0.2153  val 0.2042  val MCC 0.8426  (208s)
+  epoch  8  train 0.2106  val 0.2070  val MCC 0.8340  (248s)
+  epoch  9  train 0.2052  val 0.2032  val MCC 0.8393  (244s)
+  epoch 10  train 0.2027  val 0.2015  val MCC 0.8426  (245s)
+  epoch 11  train 0.1944  val 0.1875  val MCC 0.8600  (252s)
+  epoch 12  train 0.1902  val 0.2053  val MCC 0.8305  (250s)
+  epoch 13  train 0.1855  val 0.1858  val MCC 0.8559  (251s)
+  epoch 14  train 0.1824  val 0.1822  val MCC 0.8568  (7409s)
+  epoch 15  train 0.1750  val 0.1860  val MCC 0.8540  (335s)
+  epoch 16  train 0.1739  val 0.1858  val MCC 0.8553  (286s)
+  epoch 17  train 0.1572  val 0.1805  val MCC 0.8661  (253s)
+  epoch 18  train 0.1522  val 0.1842  val MCC 0.8571  (235s)
+  epoch 19  train 0.1483  val 0.1786  val MCC 0.8576  (235s)
+  epoch 20  train 0.1443  val 0.1809  val MCC 0.8507  (229s)
+  epoch 21  train 0.1434  val 0.1818  val MCC 0.8595  (229s)
+  epoch 22  train 0.1320  val 0.1836  val MCC 0.8608  (228s)
+  epoch 23  train 0.1279  val 0.1862  val MCC 0.8488  (228s)
+  early stopping
+[bilstm_char] DEV  MCC 0.8576  acc 0.9287  F1 0.9290  AUC 0.9803  best epoch 19  13044s  199,553 params
+[bilstm_kmer] vocab 4098, train tokens (47356, 295), ~295 tokens/seq, device mps

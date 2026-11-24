@@ -1,0 +1,31 @@
+{
+  "model": "bilstm_kmer",
+  "tokenizer": "kmer",
+  "config": {
+    "embedding_dim": 64,
+    "hidden_dim": 128,
+    "num_layers": 1,
+    "dropout": 0.3,
+    "lr": 0.001,
+    "batch_size": 128
+  },
+  "n_params": 461441,
+  "train_seconds": 3015.4365220069885,
+  "best_epoch": 4,
+  "test_metrics": {
+    "mcc": 0.7363043675171556,
+    "accuracy": 0.8648648648648649,
+    "f1": 0.8742533794404276,
+    "roc_auc": 0.9363642537551933,
+    "confusion_matrix": [
+      [
+        2339,
+        601
+      ],
+      [
+        199,
+        2781
+      ]
+    ]
+  }
+}

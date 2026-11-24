@@ -1,0 +1,31 @@
+{
+  "model": "bilstm_bpe4096",
+  "tokenizer": "bpe4096",
+  "config": {
+    "embedding_dim": 64,
+    "hidden_dim": 128,
+    "num_layers": 1,
+    "dropout": 0.3,
+    "lr": 0.001,
+    "batch_size": 128
+  },
+  "n_params": 461313,
+  "train_seconds": 880.0298671722412,
+  "best_epoch": 6,
+  "test_metrics": {
+    "mcc": 0.716877102410473,
+    "accuracy": 0.8584459459459459,
+    "f1": 0.8596784996651038,
+    "roc_auc": 0.9378874469250786,
+    "confusion_matrix": [
+      [
+        2515,
+        425
+      ],
+      [
+        413,
+        2567
+      ]
+    ]
+  }
+}

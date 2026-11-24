@@ -69,6 +69,9 @@ def load_model(path: str):
 class PromoterModel(ABC):
     """Base class for promoter detection models."""
 
+    # Subclasses that return per-feature importance (k-mer contributions) set this to True.
+    supports_features = False
+
     @abstractmethod
     def predict(self, sequence: str) -> dict:
         """

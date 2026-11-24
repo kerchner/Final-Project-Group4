@@ -1,0 +1,31 @@
+{
+  "model": "bilstm_char",
+  "tokenizer": "char",
+  "config": {
+    "embedding_dim": 64,
+    "hidden_dim": 128,
+    "num_layers": 1,
+    "dropout": 0.3,
+    "lr": 0.001,
+    "batch_size": 128
+  },
+  "n_params": 199553,
+  "train_seconds": 13044.06886792183,
+  "best_epoch": 19,
+  "test_metrics": {
+    "mcc": 0.8320998241588133,
+    "accuracy": 0.9160472972972973,
+    "f1": 0.9169035278381542,
+    "roc_auc": 0.975190042459937,
+    "confusion_matrix": [
+      [
+        2681,
+        259
+      ],
+      [
+        238,
+        2742
+      ]
+    ]
+  }
+}
