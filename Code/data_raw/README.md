@@ -1,0 +1,1 @@
+Data set is from [https://github.com/MAGICS-LAB/DNABERT_2/tree/main#6-finetune](https://github.com/MAGICS-LAB/DNABERT_2/tree/main#6-finetune) - see the link under **6.1** which downloads a 298 MB zip file.  Within that zip file, our data files come from `prom/prom_300_all`.
