@@ -12,10 +12,9 @@ Data has been cleaned using `Dan/data_cleaning.R` to do the following:
 
 The cleaning rules slightly favored the training set, but the ratio of training to test and dev remained 80.0/10.0/10.0 even after cleaning:
 
-```
-Train 47231 (80.0%)
-Test   5898 (10.0%)
-Dev    5879 (10.0%)
-
-Total 59008
-```
+|       | Before cleaning | After cleaning   | Rows Removed |
+|-------|------------------|------------------|--------------|
+| Train | 47356 (80.0%)    | 47231 (80.04%)   | 125 (2.6%)   |
+| Test  | 5920 (10.0%)     | 5898 (9.99%)     | 22 (3.7%)    |
+| Dev   | 5920 (10.0%)     | 5879 (9.96%)     | 41 (6.9%)    |
+| Total | 59196            | 59008            | 188 (3.2%)   |
