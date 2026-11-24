@@ -10,7 +10,7 @@
   <meta name="generator" content="quarto-1.11.9">
 
   <meta name="author" content="Ilgaz Kuscu · Dan Kerchner · Alejandro Gomez">
-  <meta name="dcterms.date" content="2026-11-23">
+  <meta name="dcterms.date" content="2026-11-24">
   <title>Tokenizers and Models for Human Promoter Detection</title>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -145,7 +145,7 @@ Ilgaz Kuscu · Dan Kerchner · Alejandro Gomez
 </div>
 </div>
 
-  <p class="date">2026-11-23</p>
+  <p class="date">2026-11-24</p>
 </section>
 <section class="slide level2">
 <h2>Overview and Motivation</h2>
@@ -169,19 +169,26 @@ Ilgaz Kuscu · Dan Kerchner · Alejandro Gomez
 <section class="slide level2">
 <h2>Methodology:Tokenization of DNA Sequence Data</h2>
 <ul>
-<li>TODO</li>
+<li>single nucleotide tokens</li>
+<li>TODO: describe k-mer tokenization</li>
+<li>TODO: describe BPE tokenization</li>
+<li>pros/cons</li>
 </ul>
 </section>
 <section class="slide level2">
 <h2>Methodology: Models</h2>
 <ul>
-<li>TODO</li>
+<li>Logistic Regression w/different kmer tokenizations</li>
+<li>BiLSTM - w/different tokenizations</li>
+<li>DNABERT-2 w/frozen embeddings</li>
+<li>DNABERT-2 w/fine-tuning</li>
 </ul>
 </section>
 <section class="slide level2">
 <h2>Evaluation</h2>
 <ul>
-<li>TODO</li>
+<li>MCC - what is it?</li>
+<li>Why MCC?</li>
 </ul>
 </section>
 <section class="slide level2">
@@ -199,7 +206,9 @@ Ilgaz Kuscu · Dan Kerchner · Alejandro Gomez
 <section class="slide level2">
 <h2>Streamlit App</h2>
 <ul>
-<li>TODO</li>
+<li>How we pickled/froze the models</li>
+<li>How it performs predictions</li>
+<li>How it calculates feature importance</li>
 </ul>
 </section>
 <section class="slide level2">
