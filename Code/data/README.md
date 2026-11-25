@@ -9,7 +9,7 @@ Data has been cleaned using `Dan/data_cleaning.R` to do the following:
 - Look for duplicate sequences within each set.
    - If found and they have different labels, drop all copies. This dropped 22 rows, all in train.  
    - If found and they have the same label, collapse to 1 copy. This dropped 1 row in dev, 3 rows in test, and 103 rows in train.
-- Remove any sequence containing [IUPAC nucleotide codes](https://www.bioinformatics.org/sms/iupac.html) other than `A`, `C`, `T`, `G`. This dropped 1 row containing an `N`.
+- Remove any sequence containing [IUPAC nucleotide codes](https://www.bioinformatics.org/sms/iupac.html) other than `A`, `C`, `T`, `G`. This dropped 1 row containing an `N` in dev.
 
 The cleaning rules slightly favored the training set, but the ratio of training to test and dev remained 80.0/10.0/10.0 even after cleaning:
 
