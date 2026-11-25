@@ -1,4 +1,5 @@
 library(dplyr)
+library(stringr)
 
 # Load raw data
 
@@ -63,6 +64,22 @@ data_all |>
 # 1   dev  5879   9.963
 # 2  test  5898   9.995 
 # 3 train 47231  80.042
+
+# Remove sequences containing any letters not in {'A', 'T', 'C', 'G'}... which we determined to be just one sequence with 'N'
+
+data_all <- data_all |>
+  filter(!str_detect(sequence, 'N'))
+
+data_all |>
+  count(set) |>
+  mutate(pct = n / sum(n) * 100)
+
+#     set     n    pct
+# 1   dev  5878   9.963
+# 2  test  5898   9.995 
+# 3 train 47231  80.042
+
+# Removed 1 row in dev
 
 data_train_clean <- data_all |> filter(set == 'train') |> select(-set)
 data_test_clean <- data_all |> filter(set == 'test') |> select(-set)

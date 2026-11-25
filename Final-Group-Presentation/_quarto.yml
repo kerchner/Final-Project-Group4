@@ -1,14 +1,14 @@
 project:
   type: default
-  output-dir: docs
+  output-dir: ../docs
   render:
     - index.qmd
   post-render:
-    - touch docs/.nojekyll
+    - touch ../docs/.nojekyll
 
 format:
   revealjs:
-    theme: default
+    theme: [default, custom.scss]
     slide-number: c/t
     show-slide-number: all
     hash-type: number

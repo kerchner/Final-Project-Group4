@@ -1,0 +1,317 @@
+/*-- scss:defaults --*/
+
+// "Tokenizers and Models for Human Promoter Detection" theme
+// Palette per GWU brand guidelines: https://communications.gwu.edu/brand-guidelines/color-palette
+$gw-blue:       #033c5a;   // GW Blue (PANTONE 302) — primary: dark slides, headings, table headers
+$gw-blue-dark:  #00223e;   // Navy Yard (PANTONE 303) — deeper accent / gradients
+$gw-potomac:    #0075c8;   // Potomac (PANTONE 3005) — links, h3, interactive accents
+$gw-buff:       #d6bf91;   // GW Buff (PANTONE 7502) — secondary: markers, rules, footer
+$gw-buff-80:    #dac8a3;
+$gw-buff-50:    #e8ddc6;
+$gw-buff-20:    #f6f1e8;   // tint background / table stripe
+$gw-parchment:  #ffefae;   // Parchment — title accent, highlight
+$gw-row-house:  #ef4343;   // Row House — sparing alert/emphasis accent
+$gw-blossom:    #d1a0b9;   // Blossom — sparing accent
+$gw-blue-fog:   #52c9e8;   // Blue Fog — sparing accent
+$gw-patina:     #adcab8;   // Patina — sparing accent
+
+$ink:   #1c2b36;
+$paper: #fdfcf9;
+
+// GWU brand fonts (Avenir Next / Gazzetta) are not freely licensed for web embedding.
+// Jost stands in for Gazzetta's geometric display character; Mulish stands in for
+// Avenir Next's clean humanist body text; Source Serif 4 is GW's own secondary font
+// and is open-licensed, used here for emphasis/callouts exactly as GW intends.
+$heading-font-name: "Jost";
+$body-font-name: "Mulish";
+$serif-font-name: "Source Serif 4";
+
+@import url('https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Mulish:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Source+Serif+4:ital,wght@0,600;1,500&family=Fira+Code:wght@400;600&display=swap');
+
+$font-family-sans-serif: $body-font-name, "Segoe UI", sans-serif;
+$font-family-monospace: "Fira Code", "Menlo", monospace;
+$presentation-heading-font: $heading-font-name, "Segoe UI", sans-serif;
+
+$body-bg: $paper;
+$body-color: $ink;
+$link-color: $gw-potomac;
+$presentation-heading-color: $gw-blue;
+
+$presentation-font-size-root: 34px;
+$presentation-h1-font-size: 2.1em;
+$presentation-h2-font-size: 1.45em;
+$presentation-h3-font-size: 1.05em;
+$presentation-heading-font-weight: 600;
+$presentation-heading-letter-spacing: 0.01em;
+
+$code-color: #7a3d63;
+$code-block-bg: $gw-buff-20;
+$code-block-border-color: $gw-buff;
+
+/*-- scss:rules --*/
+
+.reveal {
+
+  h2 {
+    padding-bottom: 0.15em;
+    border-bottom: 4px solid $gw-buff;
+    display: table;
+    margin-bottom: 0.4em;
+  }
+
+  h3 {
+    color: $gw-potomac;
+  }
+
+  em, .emphasis {
+    font-family: $serif-font-name, Georgia, serif;
+    font-style: italic;
+  }
+
+  // ---------------------------------------------------------------
+  // Title slide
+  // ---------------------------------------------------------------
+  .custom-title {
+    text-align: left;
+
+    h2:empty {
+      display: none;
+    }
+
+    .ct-series {
+      color: $gw-buff;
+      font-family: $presentation-heading-font;
+      font-style: italic;
+      font-size: 1.0em;
+      margin-top: 0.3em;
+    }
+
+    .ct-title {
+      font-family: $presentation-heading-font;
+      font-weight: 700;
+      font-size: 2.3em;
+      line-height: 1.1;
+      color: $gw-parchment;
+    }
+
+    .ct-subtitle {
+      color: $paper;
+      font-family: $serif-font-name, Georgia, serif;
+      font-style: italic;
+      font-size: 1.15em;
+      margin-top: 0.4em;
+    }
+
+    .ct-author {
+      color: $gw-buff-80;
+      font-size: 0.7em;
+      margin-top: 1em;
+    }
+
+    .ct-date {
+      color: $gw-buff;
+      font-size: 0.6em;
+      margin-top: 0.3em;
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Section divider slides (dark background)
+  // ---------------------------------------------------------------
+  .divider {
+    h2 {
+      color: $gw-parchment;
+      border-bottom-color: $gw-buff;
+      font-size: 1.9em;
+    }
+    color: $paper;
+
+    a {
+      color: $gw-blue-fog;
+    }
+
+    code {
+      background-color: rgba(255, 255, 255, 0.15);
+      color: $gw-parchment;
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Lists
+  // ---------------------------------------------------------------
+  ul, ol {
+    li {
+      margin-bottom: 0.35em;
+      line-height: 1.35;
+    }
+    li::marker {
+      color: $gw-buff;
+    }
+  }
+
+  code, pre, kbd {
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
+  }
+
+  pre {
+    border-radius: 10px;
+    border-left: 6px solid $gw-buff;
+    box-shadow: 2px 3px 0 rgba($gw-blue, 0.15);
+
+    code {
+      font-size: 0.8em;
+      line-height: 1.4;
+      padding: 0.6em 0.8em;
+      max-height: 440px;
+    }
+  }
+
+  code {
+    background-color: $gw-buff-20;
+    border-radius: 4px;
+    padding: 0.05em 0.25em;
+  }
+
+  pre code {
+    background-color: transparent;
+    padding: 0.6em 0.8em;
+  }
+
+  // ---------------------------------------------------------------
+  // Content + image slide layout: a text column and an image column,
+  // giving each content slide room for explanatory text alongside a figure
+  // ---------------------------------------------------------------
+  .content-grid {
+    display: flex;
+    gap: 1.5em;
+    align-items: flex-start;
+    margin-top: 0.3em;
+
+    .content-text {
+      flex: 1.1;
+      min-width: 0;
+    }
+
+    .content-figure {
+      flex: 1;
+      min-width: 0;
+      text-align: center;
+
+      img, svg {
+        max-width: 100%;
+        border-radius: 8px;
+        box-shadow: 3px 4px 0 rgba($gw-blue, 0.12);
+      }
+
+      figcaption, .figure-caption {
+        font-size: 0.65em;
+        color: $gw-blue;
+        font-family: $serif-font-name, Georgia, serif;
+        font-style: italic;
+        margin-top: 0.5em;
+      }
+    }
+  }
+
+  // Placeholder box for figures not yet added
+  .figure-placeholder {
+    border: 2px dashed $gw-buff;
+    border-radius: 8px;
+    background-color: $gw-buff-20;
+    color: $gw-blue;
+    font-family: $serif-font-name, Georgia, serif;
+    font-style: italic;
+    font-size: 0.7em;
+    padding: 2em 1em;
+    text-align: center;
+  }
+
+  // Tables
+  table {
+    font-size: 0.72em;
+
+    th {
+      background-color: $gw-blue;
+      color: $paper;
+      padding: 0.35em 0.7em;
+    }
+
+    td {
+      padding: 0.3em 0.7em;
+    }
+
+    tr:nth-child(even) td {
+      background-color: $gw-buff-20;
+    }
+  }
+
+  // Callout box
+  .tip-box {
+    background-color: $gw-buff-20;
+    border-left: 6px solid $gw-potomac;
+    border-radius: 8px;
+    padding: 0.5em 0.8em;
+    margin-top: 0.6em;
+    font-size: 0.8em;
+  }
+
+  .big-link {
+    font-size: 1.3em;
+    font-weight: 700;
+    text-align: center;
+    margin-top: 1em;
+  }
+
+  .footer {
+    color: $gw-blue;
+    font-family: $serif-font-name, Georgia, serif;
+    font-style: italic;
+  }
+
+  .slide-number {
+    color: $gw-blue;
+  }
+
+  &.has-dark-background {
+    .footer, .footer a {
+      color: $paper;
+    }
+    .slide-number {
+      color: $gw-parchment;
+    }
+    .slide-menu-button .fa-bars::before,
+    .slide-chalkboard-buttons .fa-easel2::before,
+    .slide-chalkboard-buttons .fa-brush::before {
+      filter: brightness(0) invert(1);
+    }
+
+    table {
+      td {
+        color: $paper;
+      }
+      tr:nth-child(odd) td {
+        background-color: rgba($paper, 0.08);
+      }
+      tr:nth-child(even) td {
+        background-color: rgba($paper, 0.18);
+      }
+    }
+  }
+
+  .smaller {
+    font-size: 0.75em;
+  }
+}
+
+.reveal .boxed {
+  border: 2px solid $gw-blue;
+  border-radius: 4px;
+  padding: 0.5em 1em;
+}
+
+// Nested columns fix
+.reveal div.columns > div.column > div.columns {
+  margin-left: 0;
+  margin-right: 0;
+}

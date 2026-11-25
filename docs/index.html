@@ -9,7 +9,6 @@
 <link href="index_files/libs/quarto-html/quarto-syntax-highlighting-7b1528b1cba7e9f63f59baa7408a6f56.css" rel="stylesheet" id="quarto-text-highlighting-styles"><meta charset="utf-8">
   <meta name="generator" content="quarto-1.11.9">
 
-  <meta name="author" content="Ilgaz Kuscu · Dan Kerchner · Alejandro Gomez">
   <meta name="dcterms.date" content="2026-11-24">
   <title>Tokenizers and Models for Human Promoter Detection</title>
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -36,7 +35,7 @@
       vertical-align: middle;
     }
   </style>
-  <link rel="stylesheet" href="index_files/libs/revealjs/dist/theme/quarto-00ad5a49dff614330cd349bcec985ec3.css">
+  <link rel="stylesheet" href="index_files/libs/revealjs/dist/theme/quarto-00ef68bcbd92edddbd25395f6cfe708e.css">
   <link href="index_files/libs/revealjs/plugin/quarto-line-highlight/line-highlight.css" rel="stylesheet">
   <link href="index_files/libs/revealjs/plugin/reveal-menu/menu.css" rel="stylesheet">
   <link href="index_files/libs/revealjs/plugin/reveal-menu/quarto-menu.css" rel="stylesheet">
@@ -133,91 +132,204 @@
   <div class="reveal">
     <div class="slides">
 
-<section class="quarto-title-block center">
-  <h1 class="title">Tokenizers and Models for Human Promoter Detection</h1>
-  <p class="subtitle">DATS 6312 NLP Final Project</p>
 
-<div class="quarto-title-authors">
-<div class="quarto-title-author">
-<div class="quarto-title-author-name">
-Ilgaz Kuscu · Dan Kerchner · Alejandro Gomez
+<section class="slide level2 custom-title" data-background-color="#033c5a">
+<h2></h2>
+<div class="ct-series">
+<p>DATS 6312 · NLP Final Project</p>
 </div>
+<div class="ct-title">
+<p>Tokenizers and Models for Human Promoter Detection</p>
 </div>
+<div class="ct-subtitle">
+<p>Comparing tokenization strategies and model architectures for DNA sequence classification</p>
 </div>
-
-  <p class="date">2026-11-24</p>
+<div class="ct-author">
+<p>Ilgaz Kuscu · Dan Kerchner · Alejandro Gomez</p>
+</div>
+<div class="ct-date">
+<p>2026-11-24</p>
+</div>
 </section>
 <section class="slide level2">
 <h2>Overview and Motivation</h2>
+<div class="content-grid">
+<div class="content-text">
 <ul>
-<li>TODO</li>
+<li>TODO: problem statement — why detecting human promoter regions matters</li>
+<li>TODO: framing as an NLP / sequence-classification task</li>
+<li>TODO: project goals and research questions</li>
 </ul>
+</div>
+<div class="content-figure">
+<div class="figure-placeholder">
+<p>Figure: motivating diagram (e.g.&nbsp;promoter region in a gene)</p>
+</div>
+</div>
+</div>
 </section>
 <section class="slide level2">
 <h2>Dataset</h2>
+<div class="content-grid">
+<div class="content-text">
 <ul>
 <li>Origin</li>
 <li>Descriptive metrics</li>
 </ul>
+</div>
+<div class="content-figure">
+<div class="figure-placeholder">
+<p>Figure/table: dataset summary (class balance, sequence lengths, sample counts)</p>
+</div>
+</div>
+</div>
 </section>
 <section class="slide level2">
 <h2>Data Quality &amp; Data Cleaning</h2>
+<div class="content-grid">
+<div class="content-text">
 <ul>
-<li>TODO</li>
+<li>TODO: data quality issues found</li>
+<li>Removed sequences containing <code>N</code></li>
+<li>TODO: before/after cleaning stats</li>
 </ul>
+</div>
+<div class="content-figure">
+<div class="figure-placeholder">
+<p>Figure: data cleaning pipeline</p>
+</div>
+</div>
+</div>
+</section>
+<section class="slide level2 divider" data-background-color="#033c5a">
+<h2>Methodology</h2>
 </section>
 <section class="slide level2">
-<h2>Methodology:Tokenization of DNA Sequence Data</h2>
+<h2>Tokenization of DNA Sequence Data</h2>
+<div class="content-grid">
+<div class="content-text">
 <ul>
-<li>single nucleotide tokens</li>
+<li>Single nucleotide tokens</li>
 <li>TODO: describe k-mer tokenization</li>
 <li>TODO: describe BPE tokenization</li>
-<li>pros/cons</li>
+<li>Pros/cons</li>
 </ul>
+</div>
+<div class="content-figure">
+<div class="figure-placeholder">
+<p>Figure: side-by-side example of a sequence under each tokenization scheme</p>
+</div>
+</div>
+</div>
 </section>
 <section class="slide level2">
-<h2>Methodology: Models</h2>
+<h2>Models</h2>
+<div class="content-grid">
+<div class="content-text">
 <ul>
-<li>Logistic Regression w/different kmer tokenizations</li>
-<li>BiLSTM - w/different tokenizations</li>
-<li>DNABERT-2 w/frozen embeddings</li>
-<li>DNABERT-2 w/fine-tuning</li>
+<li>Logistic Regression w/ different k-mer tokenizations</li>
+<li>BiLSTM — w/ different tokenizations</li>
+<li>DNABERT-2 w/ frozen embeddings</li>
+<li>DNABERT-2 w/ fine-tuning</li>
 </ul>
+</div>
+<div class="content-figure">
+<div class="figure-placeholder">
+<p>Figure: model architecture diagram</p>
+</div>
+</div>
+</div>
+</section>
+<section class="slide level2 divider" data-background-color="#033c5a">
+<h2>Evaluation &amp; Results</h2>
 </section>
 <section class="slide level2">
 <h2>Evaluation</h2>
+<div class="content-grid">
+<div class="content-text">
 <ul>
-<li>MCC - what is it?</li>
+<li>MCC — what is it?</li>
 <li>Why MCC?</li>
+<li>TODO: other metrics reported</li>
 </ul>
+</div>
+<div class="content-figure">
+<div class="figure-placeholder">
+<p>Figure: MCC formula / confusion matrix</p>
+</div>
+</div>
+</div>
 </section>
 <section class="slide level2">
 <h2>Results</h2>
+<div class="content-grid">
+<div class="content-text">
 <ul>
-<li>TODO</li>
+<li>TODO: results table across models/tokenizations</li>
+<li>TODO: key takeaways</li>
 </ul>
+</div>
+<div class="content-figure">
+<div class="figure-placeholder">
+<p>Figure/table: results comparison</p>
+</div>
+</div>
+</div>
 </section>
 <section class="slide level2">
 <h2>Interpretability</h2>
+<div class="content-grid">
+<div class="content-text">
 <ul>
-<li>TODO</li>
+<li>TODO: feature importance approach</li>
+<li>TODO: key findings</li>
 </ul>
+</div>
+<div class="content-figure">
+<div class="figure-placeholder">
+<p>Figure: feature importance plot</p>
+</div>
+</div>
+</div>
+</section>
+<section class="slide level2 divider" data-background-color="#033c5a">
+<h2>Application</h2>
 </section>
 <section class="slide level2">
 <h2>Streamlit App</h2>
+<div class="content-grid">
+<div class="content-text">
 <ul>
 <li>How we pickled/froze the models</li>
 <li>How it performs predictions</li>
 <li>How it calculates feature importance</li>
 </ul>
+</div>
+<div class="content-figure">
+<div class="figure-placeholder">
+<p>Screenshot: Streamlit app</p>
+</div>
+</div>
+</div>
 </section>
 <section class="slide level2">
 <h2>Conclusions and Future Work</h2>
+<div class="content-grid">
+<div class="content-text">
 <ul>
-<li>TODO</li>
+<li>TODO: summary of findings</li>
+<li>TODO: limitations</li>
+<li>TODO: future work</li>
 </ul>
+</div>
+<div class="content-figure">
+<div class="figure-placeholder">
+<p>Figure: summary graphic</p>
+</div>
+</div>
+</div>
 </section>
-<section class="slide level2">
+<section class="slide level2 smaller">
 <h2>References</h2>
 <ul>
 <li>TODO</li>
