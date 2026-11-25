@@ -1,60 +1,188 @@
 ---
-title: "Tokenizers and Models for Human Promoter Detection"
-subtitle: "DATS 6312 NLP Final Project"
-author: "Ilgaz Kuscu · Dan Kerchner · Alejandro Gomez"
+pagetitle: "Tokenizers and Models for Human Promoter Detection"
 date: today
 ---
 
+## {.custom-title background-color="#033c5a"}
+
+::: {.ct-series}
+DATS 6312 · NLP Final Project
+:::
+
+::: {.ct-title}
+Tokenizers and Models for Human Promoter Detection
+:::
+
+::: {.ct-subtitle}
+Comparing tokenization strategies and model architectures for DNA sequence classification
+:::
+
+::: {.ct-author}
+Ilgaz Kuscu · Dan Kerchner · Alejandro Gomez
+:::
+
+::: {.ct-date}
+{{< meta date >}}
+:::
+
 ## Overview and Motivation
 
-- TODO
+:::: {.content-grid}
+::: {.content-text}
+- TODO: problem statement — why detecting human promoter regions matters
+- TODO: framing as an NLP / sequence-classification task
+- TODO: project goals and research questions
+:::
+::: {.content-figure}
+::: {.figure-placeholder}
+Figure: motivating diagram
+(e.g. promoter region in a gene)
+:::
+:::
+::::
 
 ## Dataset
 
+:::: {.content-grid}
+::: {.content-text}
 - Origin
 - Descriptive metrics
+:::
+::: {.content-figure}
+::: {.figure-placeholder}
+Figure/table: dataset summary
+(class balance, sequence lengths, sample counts)
+:::
+:::
+::::
 
 ## Data Quality & Data Cleaning
 
-- TODO
+:::: {.content-grid}
+::: {.content-text}
+- TODO: data quality issues found
+- Removed sequences containing `N`
+- TODO: before/after cleaning stats
+:::
+::: {.content-figure}
+::: {.figure-placeholder}
+Figure: data cleaning pipeline
+:::
+:::
+::::
 
-## Methodology:Tokenization of DNA Sequence Data
+## Methodology {background-color="#033c5a" .divider}
 
-- single nucleotide tokens
+## Tokenization of DNA Sequence Data
+
+:::: {.content-grid}
+::: {.content-text}
+- Single nucleotide tokens
 - TODO: describe k-mer tokenization
 - TODO: describe BPE tokenization
-- pros/cons
+- Pros/cons
+:::
+::: {.content-figure}
+::: {.figure-placeholder}
+Figure: side-by-side example of
+a sequence under each tokenization scheme
+:::
+:::
+::::
 
-## Methodology: Models
+## Models
 
-- Logistic Regression w/different kmer tokenizations
-- BiLSTM - w/different tokenizations
-- DNABERT-2 w/frozen embeddings
-- DNABERT-2 w/fine-tuning
+:::: {.content-grid}
+::: {.content-text}
+- Logistic Regression w/ different k-mer tokenizations
+- BiLSTM — w/ different tokenizations
+- DNABERT-2 w/ frozen embeddings
+- DNABERT-2 w/ fine-tuning
+:::
+::: {.content-figure}
+::: {.figure-placeholder}
+Figure: model architecture diagram
+:::
+:::
+::::
+
+## Evaluation & Results {background-color="#033c5a" .divider}
 
 ## Evaluation
 
-- MCC - what is it?
+:::: {.content-grid}
+::: {.content-text}
+- MCC — what is it?
 - Why MCC?
+- TODO: other metrics reported
+:::
+::: {.content-figure}
+::: {.figure-placeholder}
+Figure: MCC formula / confusion matrix
+:::
+:::
+::::
 
 ## Results
 
-- TODO
+:::: {.content-grid}
+::: {.content-text}
+- TODO: results table across models/tokenizations
+- TODO: key takeaways
+:::
+::: {.content-figure}
+::: {.figure-placeholder}
+Figure/table: results comparison
+:::
+:::
+::::
 
 ## Interpretability
 
-- TODO
+:::: {.content-grid}
+::: {.content-text}
+- TODO: feature importance approach
+- TODO: key findings
+:::
+::: {.content-figure}
+::: {.figure-placeholder}
+Figure: feature importance plot
+:::
+:::
+::::
+
+## Application {background-color="#033c5a" .divider}
 
 ## Streamlit App
 
+:::: {.content-grid}
+::: {.content-text}
 - How we pickled/froze the models
 - How it performs predictions
 - How it calculates feature importance
+:::
+::: {.content-figure}
+::: {.figure-placeholder}
+Screenshot: Streamlit app
+:::
+:::
+::::
 
 ## Conclusions and Future Work
 
-- TODO
+:::: {.content-grid}
+::: {.content-text}
+- TODO: summary of findings
+- TODO: limitations
+- TODO: future work
+:::
+::: {.content-figure}
+::: {.figure-placeholder}
+Figure: summary graphic
+:::
+:::
+::::
 
-## References
+## References {.smaller}
 
 - TODO

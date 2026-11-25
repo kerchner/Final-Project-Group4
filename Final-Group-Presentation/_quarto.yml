@@ -8,7 +8,7 @@ project:
 
 format:
   revealjs:
-    theme: default
+    theme: [default, custom.scss]
     slide-number: c/t
     show-slide-number: all
     hash-type: number
