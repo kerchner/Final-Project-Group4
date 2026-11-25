@@ -20,15 +20,22 @@ date: today
 
 ## Methodology:Tokenization of DNA Sequence Data
 
-- TODO
+- single nucleotide tokens
+- TODO: describe k-mer tokenization
+- TODO: describe BPE tokenization
+- pros/cons
 
 ## Methodology: Models
 
-- TODO
+- Logistic Regression w/different kmer tokenizations
+- BiLSTM - w/different tokenizations
+- DNABERT-2 w/frozen embeddings
+- DNABERT-2 w/fine-tuning
 
 ## Evaluation
 
-- TODO
+- MCC - what is it?
+- Why MCC?
 
 ## Results
 
@@ -40,7 +47,9 @@ date: today
 
 ## Streamlit App
 
-- TODO
+- How we pickled/froze the models
+- How it performs predictions
+- How it calculates feature importance
 
 ## Conclusions and Future Work
 
