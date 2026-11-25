@@ -79,7 +79,7 @@ data_all |>
 # 2  test  5898   9.995 
 # 3 train 47231  80.042
 
-# Removed nothing
+# Removed 1 row in dev
 
 data_train_clean <- data_all |> filter(set == 'train') |> select(-set)
 data_test_clean <- data_all |> filter(set == 'test') |> select(-set)
